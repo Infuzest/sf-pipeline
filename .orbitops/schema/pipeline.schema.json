@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://orbitops.dev/schema/pipeline.schema.json",
-  "title": "OrbitOps pipeline configuration",
+  "title": "BUPA Salesforce DevOps pipeline configuration",
   "type": "object",
   "additionalProperties": false,
   "required": ["pipeline"],

@@ -1,4 +1,4 @@
-# OrbitOps — Salesforce CI/CD for citizen developers
+# BUPA Salesforce DevOps — Salesforce CI/CD for citizen developers
 
 A DevOps-Center-like release platform built on **GitHub Actions + Salesforce CLI**,
 with a companion web UI ([orbitops-ui](https://github.com/SalikPOC/orbitops-ui)).

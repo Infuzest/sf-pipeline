@@ -4,7 +4,7 @@ description: >
   (pinned versions), then authenticates to an org. Two auth methods:
   "jwt" (connected app + certificate — used for PROD) and
   "sfdx-url" (SFDX auth URL — used for scratch-org stages, whose orgs cannot
-  create connected apps since Spring '26). Used by every OrbitOps workflow
+  create connected apps since Spring '26). Used by every BUPA Salesforce DevOps workflow
   that touches an org.
 
 inputs:

@@ -2,7 +2,7 @@
   "name": "sf-pipeline",
   "private": true,
   "type": "module",
-  "description": "OrbitOps Salesforce CI/CD pipeline — SFDX project + GitHub Actions workflows",
+  "description": "BUPA Salesforce DevOps Salesforce CI/CD pipeline — SFDX project + GitHub Actions workflows",
   "scripts": {
     "config:validate": "node scripts/validate-pipeline-config.mjs",
     "test": "node --test \"scripts/**/*.test.mjs\"",

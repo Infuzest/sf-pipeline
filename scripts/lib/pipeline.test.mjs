@@ -2,13 +2,27 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadPipeline, resolveStage } from "./pipeline.mjs";
 
-test("real pipeline.yml resolves all three stages", () => {
+test("real pipeline.yml: every declared stage resolves (topology-agnostic)", () => {
+  // The platform's whole point is configurable topology — different
+  // products/projects run different stages. So this asserts the CONTRACT that
+  // must hold for ANY valid pipeline.yml, never a specific set of stage names:
+  //   1. at least one stage is defined,
+  //   2. every declared stage round-trips through resolveStage with its fields,
+  //   3. a branch that isn't a stage is rejected.
   const stages = loadPipeline(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
-  const main = resolveStage(stages, "main");
-  assert.equal(main.org, "PROD");
-  assert.equal(main.authMethod, "jwt");
-  assert.equal(resolveStage(stages, "integration").testLevel, "Conditional");
-  assert.equal(resolveStage(stages, "uat").gates.minCoverage, 75);
+  assert.ok(stages.length >= 1, "pipeline.yml must declare at least one stage");
+
+  for (const s of stages) {
+    const r = resolveStage(stages, s.branch);
+    assert.equal(r.branch, s.branch);
+    assert.equal(r.org, s.org);
+    assert.equal(r.environment, s.environment);
+    assert.ok(["jwt", "sfdx-url"].includes(r.authMethod), `${s.branch}: valid authMethod`);
+    assert.equal(typeof r.gates.minCoverage, "number", `${s.branch}: numeric minCoverage`);
+    assert.ok(r.testLevel, `${s.branch}: testLevel resolved (defaulted if omitted)`);
+  }
+
+  assert.throws(() => resolveStage(stages, "definitely-not-a-stage"), /No pipeline stage maps/);
 });
 
 test("unknown branch throws with known branches listed", () => {

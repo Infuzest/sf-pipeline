@@ -1,4 +1,4 @@
-# OrbitOps PR validation — REUSABLE workflow (single source of truth).
+# BUPA Salesforce DevOps PR validation — REUSABLE workflow (single source of truth).
 #
 # All validation logic lives HERE, on main. Every stage branch carries only a
 # thin caller (pr-validate.yml) that does `uses: ...@main`, so a fix merged to
@@ -9,7 +9,7 @@
 #   - .pipeline/            = scripts, config, and tooling from MAIN
 # Pipeline behaviour (gates, scripts, stage map) always comes from main;
 # only force-app content comes from the branch being validated.
-name: OrbitOps validation
+name: BUPA Salesforce DevOps validation
 
 on:
   workflow_call: {}
