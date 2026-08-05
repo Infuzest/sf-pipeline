@@ -1,13 +1,5 @@
 [
   {
-    "name": "test",
-    "org": "DEV_TEST",
-    "authMethod": "sfdx-url",
-    "connectedBy": "SalikPOC",
-    "connectedAt": "2026-07-15T00:10:25.169Z",
-    "instanceHost": "innovation-data-931-dev-ed.scratch.my.salesforce.com"
-  },
-  {
     "name": "Dev1",
     "org": "DEV_DEV1",
     "authMethod": "jwt",
