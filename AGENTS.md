@@ -98,8 +98,10 @@ force-app/                    the Salesforce metadata being shipped
 
 - Re-running a failed run re-executes the SAME workflow snapshot; to pick up
   workflow-definition changes a PR needs a fresh event (close/reopen or push).
-- Scratch orgs can't create connected apps (Spring '26) → integration/uat auth
-  via sfdx-url, PROD via JWT.
+- Spring '26 blocks creating/deploying NEW connected apps in any org — deploy the
+  External Client App instead (scripts/setup/external-client-app/, JWT cert via
+  ExtlClntAppGlobalOauthSettings.certificate; consumer key is org-minted, retrieve
+  it after deploy). sfdx-url remains the quick fallback for throwaway orgs.
 - `git checkout <ref> -- <path>` never deletes files absent from `<ref>` —
   rollback logic must `git rm` the tree first.
 - Retrieve falls back to a wildcard-by-type manifest when the source org lacks
