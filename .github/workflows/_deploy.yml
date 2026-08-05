@@ -60,6 +60,8 @@ jobs:
           if [ -z "$LAST_TAG" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "First deploy to $ENV — full deploy required"
+            # Publish a "full" preview so approvers still see what's happening.
+            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh "" "$ENV" full || true
             exit 0
           fi
           mkdir -p precheck
@@ -72,6 +74,9 @@ jobs:
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "Deployable delta since $LAST_TAG: ${CHANGED:-0} changed, ${DESTR:-0} destructive."
+            # Publish the authoritative component list BEFORE the approval gate
+            # so the UI's approval card shows exactly what Salesforce receives.
+            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh precheck "$ENV" delta || true
           fi
 
   deploy:
