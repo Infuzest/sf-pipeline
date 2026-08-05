@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExternalClientApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <contactEmail>xyraxel@gmail.com</contactEmail>
+    <label>Salesforce DevOps CI</label>
+    <description>CI integration app for the Salesforce DevOps pipeline (JWT bearer + PKCE web flow). Successor to the OrbitOps CI connected app.</description>
+    <distributionState>Local</distributionState>
+</ExternalClientApplication>

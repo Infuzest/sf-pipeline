@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtlClntAppOauthConfigurablePolicies xmlns="http://soap.sforce.com/2006/04/metadata">
+    <externalClientApplication>Salesforce_DevOps_CI</externalClientApplication>
+    <label>Salesforce DevOps CI OAuth Policy</label>
+    <permittedUsersPolicyType>AdminApprovedPreAuthorized</permittedUsersPolicyType>
+    <commaSeparatedPermissionSet>OrbitOps_CI</commaSeparatedPermissionSet>
+    <refreshTokenPolicyType>Infinite</refreshTokenPolicyType>
+    <ipRelaxationPolicyType>Enforce</ipRelaxationPolicyType>
+</ExtlClntAppOauthConfigurablePolicies>

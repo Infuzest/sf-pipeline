@@ -167,3 +167,16 @@ Node ESM scripts with `node --test` units · composite action
   Gate logic extracted to `evaluateCoverage()` with unit tests. pr-validate.yml
   passes `needs.delta.outputs.has_apex` (same signal that already sets
   NoTestRun in the validate step).
+- 2026-08-05: CORRECTION — scratch orgs CAN use certificate/JWT auth; the
+  earlier "ECA JWT isn't scriptable" claim was wrong (user challenged it,
+  official docs + live test confirmed). Facts: Spring '26 blocks
+  creating/deploying NEW connected apps everywhere ("You can't create a
+  connected app" on metadata deploy too — reproduced); External Client Apps
+  are fully metadata-deployable incl. the JWT cert
+  (ExtlClntAppGlobalOauthSettings.certificate, API 60+), scratch support
+  landed Spring '26. Deployed scripts/setup/external-client-app/ (ECA
+  "Salesforce DevOps CI" + reused OrbitOps_CI permset + server.crt) to
+  stagingscratch, retrieved the ORG-MINTED consumer key (per-org, unlike
+  connected apps' pinned key!), sf org login jwt succeeded. Implication:
+  per-org SF_CLIENT_ID capture step; the shared ORBITOPS_JWT_CLIENT_ID
+  pattern only holds for orgs sharing the legacy connected app.
