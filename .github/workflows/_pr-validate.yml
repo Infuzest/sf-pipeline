@@ -61,7 +61,13 @@ jobs:
       - name: Compute delta package
         run: |
           mkdir -p deploy-package
-          sf sgd source delta --from "origin/${{ github.base_ref }}" --to "HEAD" --output-dir deploy-package
+          # Scope the delta to the declared package dirs — sgd otherwise scans
+          # the whole repo and sweeps in metadata-shaped files that live outside
+          # a package (e.g. scripts/setup/**), producing components with no
+          # source behind them.
+          SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+          # shellcheck disable=SC2086
+          sf sgd source delta --from "origin/${{ github.base_ref }}" --to "HEAD" $SRC --output-dir deploy-package
       - name: Render deploy preview
         id: render
         run: node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md

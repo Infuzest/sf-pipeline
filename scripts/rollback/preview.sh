@@ -21,7 +21,9 @@ node --input-type=module -e "
 source rollback-refs.env
 
 rm -rf reverse-delta && mkdir -p reverse-delta
-sf sgd source delta --from "$CURRENT_TAG" --to "$TARGET_TAG" --output-dir reverse-delta
+SRC=$(node scripts/context/package-dirs.mjs)
+# shellcheck disable=SC2086
+sf sgd source delta --from "$CURRENT_TAG" --to "$TARGET_TAG" $SRC --output-dir reverse-delta
 
 node scripts/rollback/analyze.mjs reverse-delta \
   --env "$ROLLBACK_ENV" --from "$CURRENT_SEQ" --to "$TARGET_SEQ" \

@@ -180,3 +180,15 @@ Node ESM scripts with `node --test` units · composite action
   connected apps' pinned key!), sf org login jwt succeeded. Implication:
   per-org SF_CLIENT_ID capture step; the shared ORBITOPS_JWT_CLIENT_ID
   pattern only holds for orgs sharing the legacy connected app.
+- 2026-08-05: sfdx-git-delta scans the WHOLE repo by default, so any file that
+  merely looks like Salesforce metadata joins the delta even outside a package
+  directory. `scripts/setup/external-client-app/**` (one-off ECA admin bundle)
+  was swept in, producing a package.xml with 5 components and no source behind
+  them; validation then failed with "No source-backed components present in the
+  package" and *0 component errors, 0 test failures* — undiagnosable from the
+  UI, and it blocks promotion because promote() refuses on any failing check.
+  Fix: every sgd call passes `--source-dir` from
+  `scripts/context/package-dirs.mjs` (reads sfdx-project.json packageDirectories
+  rather than hardcoding force-app). Four call sites: _pr-validate delta,
+  _deploy precheck, _deploy delta, rollback/preview.sh. Same failure class as
+  the coverage-gate bug: a gate that fails on a not-applicable case.
