@@ -1,0 +1,23 @@
+{
+  "type": "deploy-preview",
+  "env": "uat",
+  "runId": "31052039973",
+  "sha": "e3f9744ec8d2cd21afe9eae3f9f59064285332ea",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Bank_Transactions__c.Amount__c",
+      "Bank_Transactions__c.Description__c"
+    ],
+    "Flow": [
+      "Orchestrator_Flow_TEst"
+    ],
+    "Layout": [
+      "Bank_Transactions__c-Bank Transactions Layout"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 4,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-05T22:16:13.484Z"
+}
