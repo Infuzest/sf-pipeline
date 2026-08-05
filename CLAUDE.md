@@ -192,3 +192,13 @@ Node ESM scripts with `node --test` units · composite action
   rather than hardcoding force-app). Four call sites: _pr-validate delta,
   _deploy precheck, _deploy delta, rollback/preview.sh. Same failure class as
   the coverage-gate bug: a gate that fails on a not-applicable case.
+- 2026-08-06: `sf project deploy validate --json` can report component errors
+  ONLY in `message` — `result.details.componentFailures` came back empty while
+  Salesforce's own Deployment Details page listed three errors ("Entity
+  'Bank_Transactions__c' not found"). The pipeline therefore logged
+  "Validation failed: 0 component error(s), 0 test failure(s)" and the sticky
+  comment fell back to the generic "The CLI reported:" blob, so the UI could
+  show no reason at all. parse-validate-result.mjs now tries three sources in
+  order: `details.componentFailures` (MDAPI) → `result.files` where state is
+  Failed (sf CLI v2) → parsing "Error in <name> - <problem> (line:col)" out of
+  `message`. Regression tests carry the real PR #29 payload.

@@ -8,17 +8,50 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { setOutputs } from "../lib/output.mjs";
 
+/**
+ * Component failures, from whichever shape this CLI/API version used.
+ *
+ * `details.componentFailures` is the MDAPI shape and is often EMPTY on a
+ * failed `sf project deploy validate --json` — which is how three real
+ * Salesforce errors ("Entity 'Bank_Transactions__c' not found") became
+ * "0 component error(s)" and never reached the UI. `result.files` carries them
+ * in sf CLI v2, and the CLI always restates them in `message`, so parse that
+ * as a last resort rather than reporting a failure with no reason.
+ */
+function extractFailures(json, result) {
+  const fromDetails = (result.details?.componentFailures ?? []).map((f) => ({
+    fullName: f.fullName,
+    type: f.componentType ?? "",
+    problem: f.problem,
+    line: f.lineNumber ?? "",
+  }));
+  if (fromDetails.length) return fromDetails;
+
+  const fromFiles = (result.files ?? [])
+    .filter((f) => f.state === "Failed" || f.error)
+    .map((f) => ({
+      fullName: f.fullName ?? f.filePath ?? "",
+      type: f.type ?? "",
+      problem: f.error ?? f.problem ?? "",
+      line: f.lineNumber ?? "",
+    }));
+  if (fromFiles.length) return fromFiles;
+
+  // "Error in <name> - <problem> (line:col)", one per line.
+  const text = String(json.message ?? "");
+  const parsed = [];
+  for (const m of text.matchAll(/^Error in (.+?) - (.+?)(?:\s*\((\d+):(\d+)\))?\s*$/gm)) {
+    parsed.push({ fullName: m[1], type: "", problem: m[2], line: m[3] ?? "" });
+  }
+  return parsed;
+}
+
 export function parseValidation(json) {
   const result = json.result ?? {};
   const succeeded = json.status === 0 && result.success === true;
   const test = result.details?.runTestResult ?? {};
 
-  const failures = (result.details?.componentFailures ?? []).map((f) => ({
-    fullName: f.fullName,
-    type: f.componentType,
-    problem: f.problem,
-    line: f.lineNumber ?? "",
-  }));
+  const failures = extractFailures(json, result);
 
   const coverage = (test.codeCoverage ?? []).map((c) => {
     const total = Number(c.numLocations ?? 0);
