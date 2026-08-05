@@ -1,4 +1,4 @@
-# OrbitOps deploy — REUSABLE workflow (single source of truth).
+# Salesforce DevOps deploy — REUSABLE workflow (single source of truth).
 #
 # All deploy logic lives HERE, on main. Every stage branch carries only a thin
 # caller (deploy.yml) that does `uses: ...@main`, so a fix merged to main
@@ -7,7 +7,7 @@
 # Two checkouts per job:
 #   - the default workspace = the stage branch being deployed
 #   - .pipeline/            = scripts, config, and tooling from MAIN
-name: OrbitOps deploy logic
+name: Salesforce DevOps deploy logic
 
 on:
   workflow_call:
@@ -189,7 +189,7 @@ jobs:
             --actor "$GITHUB_ACTOR" --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --extra '{"reason": ${{ toJSON(inputs.reason || '') }}, "mode": "${{ steps.range.outputs.mode }}"}' \
             --out "manifest.json"
-          git tag -a "$TAG" -m "OrbitOps deploy: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          git tag -a "$TAG" -m "Salesforce DevOps deploy: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           git push -q origin "$TAG"
           # commit manifest to the orbitops-meta branch (retry for cross-env races)
           for attempt in 1 2 3; do
@@ -228,7 +228,7 @@ jobs:
         run: |
           [ -z "$WEBHOOK" ] && { echo "No NOTIFY_WEBHOOK_URL secret — skipping."; exit 0; }
           curl -sf -X POST -H 'Content-Type: application/json' \
-            -d "{\"text\":\"❌ OrbitOps deploy to ${{ needs.context.outputs.environment }} failed: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
+            -d "{\"text\":\"❌ Salesforce DevOps deploy to ${{ needs.context.outputs.environment }} failed: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
             "$WEBHOOK" || echo "webhook post failed (non-blocking)"
 
       - name: Mark deployment status

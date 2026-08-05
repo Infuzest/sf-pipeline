@@ -1,7 +1,7 @@
-# OrbitOps citizen workspace — "Pull my changes" (REQUIREMENTS.md E6.2).
+# Salesforce DevOps citizen workspace — "Pull my changes" (REQUIREMENTS.md E6.2).
 # Retrieves a builder's sandbox edits (via source tracking) into their
 # work-item branch as a bot commit. Dispatched by the UI.
-name: OrbitOps Retrieve
+name: Salesforce DevOps Retrieve
 
 on:
   workflow_dispatch:
@@ -105,7 +105,7 @@ jobs:
             WORK_ITEM=$(echo "$WB" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+|AB#[0-9]+' | head -1 || true)
             git commit -q \
               -m "Pull changes from the ${{ inputs.source_org }} org" \
-              -m "Retrieved via OrbitOps for $WB." \
+              -m "Retrieved via Salesforce DevOps for $WB." \
               -m "Work-Items: ${WORK_ITEM:-POC-0}"
             git push -q origin "HEAD:$WB"
             {

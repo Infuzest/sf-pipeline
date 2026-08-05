@@ -1,4 +1,4 @@
-# Copilot instructions — OrbitOps sf-pipeline
+# Copilot instructions — Salesforce DevOps sf-pipeline
 
 Read [AGENTS.md](../AGENTS.md) first — it is the canonical AI brief for this
 repo (architecture invariants, file map, conventions, sharp edges). The dated

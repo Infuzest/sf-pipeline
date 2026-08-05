@@ -1,4 +1,4 @@
-# OrbitOps Platform Setup (platform owner)
+# Salesforce DevOps Platform Setup (platform owner)
 
 One-time setup for a new pipeline repo. Everything here is clickable/one-liner;
 nothing requires local Salesforce tooling except the certificate step.
@@ -18,7 +18,7 @@ git push origin main integration uat
 For **each** of `main`, `uat`, `integration` (Settings → Branches → Add rule):
 
 - Require a pull request before merging (no direct pushes)
-- Require status checks to pass; select the `OrbitOps /*` checks once they exist
+- Require status checks to pass; select the `Salesforce DevOps /*` checks once they exist
 - Require conversation resolution
 - Do NOT allow force pushes or deletions
 
@@ -34,7 +34,7 @@ match `environment:` values in `.orbitops/pipeline.yml`):
 | `production` | release-managers team | consider also a wait timer |
 
 Release managers can **approve or reject gated releases from inside the
-OrbitOps UI**: the review is made with the signed-in reviewer's own GitHub
+Salesforce DevOps UI**: the review is made with the signed-in reviewer's own GitHub
 identity (user-to-server token), so whoever approves must be listed as a
 required reviewer here — no extra reviewer entries needed. (GitHub Apps can't
 be required reviewers on personal-account repos, which is why the app itself
@@ -56,7 +56,7 @@ Two methods, chosen per stage via the `auth-method` input of the
   Bearer flow (`ExtlClntAppGlobalOauthSettings.certificate`, API 60.0+). The
   ready-to-deploy bundle lives at `scripts/setup/external-client-app/`:
   1. `sf project deploy start --metadata-dir scripts/setup/external-client-app -o <alias>`
-  2. `sf org assign permset -n OrbitOps_CI -o <alias>` (pre-authorizes the user)
+  2. `sf org assign permset -n Salesforce DevOps_CI -o <alias>` (pre-authorizes the user)
   3. Retrieve the org-generated consumer key:
      `sf project retrieve start --metadata "ExtlClntAppGlobalOauthSettings:Salesforce_DevOps_CI_Global" -o <alias> --target-metadata-dir /tmp/eca --unzip`
      → `<consumerKey>` in the retrieved `.ecaGlblOauth`. Note: unlike connected
@@ -82,7 +82,7 @@ Two methods, chosen per stage via the `auth-method` input of the
    ```
 2. Deploy the connected app: the metadata lives at
    `force-app/main/default/connectedApps/` (certificate embedded, consumer key
-   pre-set) together with the `OrbitOps_CI` permission set. Deploy both to each org
+   pre-set) together with the `Salesforce DevOps_CI` permission set. Deploy both to each org
    and assign the permission set to the integration user.
 3. Wait 2–10 minutes (connected app propagation), then test locally:
    ```bash
@@ -155,7 +155,7 @@ two ways to register one:
 
 ### Self-service: "Connect an org" in the UI (preferred)
 
-Settings → **Connect an org** in the OrbitOps UI. The builder signs in on
+Settings → **Connect an org** in the Salesforce DevOps UI. The builder signs in on
 Salesforce's own login page (OAuth authorization-code + PKCE against the
 `OrbitOps CI` connected app). The UI stores **no tokens at all** — it records
 only the username and instance host in `connected-orgs.json` on the

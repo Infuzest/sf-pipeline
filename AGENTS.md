@@ -1,4 +1,4 @@
-# OrbitOps sf-pipeline — AI assistant brief
+# Salesforce DevOps sf-pipeline — AI assistant brief
 
 Read this before changing anything. It is the condensed, always-current map of
 the repo for AI coding tools (Copilot, Cursor, Claude, GPT, …). The human docs
@@ -9,7 +9,7 @@ it summarizes: [README.md](README.md) (architecture),
 
 ## What this repo is
 
-Salesforce CI/CD platform ("OrbitOps") built on GitHub Actions + `sf` CLI v2.
+Salesforce CI/CD platform ("Salesforce DevOps") built on GitHub Actions + `sf` CLI v2.
 GitHub is the source of truth for org metadata (SFDX source format,
 `force-app/`). Two personas, one pipeline:
 

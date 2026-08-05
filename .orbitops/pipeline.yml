@@ -1,4 +1,4 @@
-# OrbitOps pipeline definition — the single source of truth for stages and gates.
+# Salesforce DevOps pipeline definition — the single source of truth for stages and gates.
 # Edited via PR only (see CODEOWNERS). Validated by scripts/validate-pipeline-config.mjs.
 # Stage order in this file IS the promotion order (left to right on the board).
 

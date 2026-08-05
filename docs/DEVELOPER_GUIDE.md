@@ -1,6 +1,6 @@
-# OrbitOps — Pro-Code Developer Guide
+# Salesforce DevOps — Pro-Code Developer Guide
 
-The OrbitOps web UI exists for citizen developers. **You don't need it.** The
+The Salesforce DevOps web UI exists for citizen developers. **You don't need it.** The
 entire release process is plain Git + GitHub: branch, commit, open a PR, merge.
 Everything the UI does is a convenience wrapper around the operations below —
 both paths are first-class and interoperate (a change started in the UI can be
@@ -72,9 +72,9 @@ merge reuses it when the merged tree matches, so green PRs release fast.
 
 ## Useful operations without the UI
 
-- **Manual deploy**: Actions → "OrbitOps Deploy" → Run workflow → pick the
+- **Manual deploy**: Actions → "Salesforce DevOps Deploy" → Run workflow → pick the
   stage branch, give a reason (audit-logged). The environment gate still applies.
-- **Rollback**: Actions → "OrbitOps Rollback" → env + target release sequence +
+- **Rollback**: Actions → "Salesforce DevOps Rollback" → env + target release sequence +
   mode (`preview` first — it validates and publishes a safety report; then
   `execute`). Rollback is metadata-only, forward-revert (no force-push).
 - **Release history**: git tags `deploy/<env>/<seq>`, plus JSON manifests under

@@ -1,6 +1,6 @@
-# OrbitOps — The Full Release Cycle (both doors, one pipeline)
+# Salesforce DevOps — The Full Release Cycle (both doors, one pipeline)
 
-Two kinds of people ship Salesforce changes through OrbitOps, and they use
+Two kinds of people ship Salesforce changes through Salesforce DevOps, and they use
 different front doors onto the **same** pipeline:
 
 - **Citizen developers** use the web UI (`http://localhost:3000`). No Git, no
@@ -36,7 +36,7 @@ stages). Nothing is ever deployed by hand.
 | **7. Approve** (later stages) | Approval card on the pipeline board | Actions → the queued run → *Review deployments* |
 | **8. Onward** | Promote again to the next stage | Open a PR from the lower stage branch into the next |
 | **9. Verify** | *Release history* / *My changes* badges | `git tag -l 'deploy/*'`, Deployments API, `orbitops-meta` manifests |
-| **10. Roll back** | *Back out a release* → preview → confirm | Actions → *OrbitOps Rollback* → `preview`, then `execute` |
+| **10. Roll back** | *Back out a release* → preview → confirm | Actions → *Salesforce DevOps Rollback* → `preview`, then `execute` |
 
 The rest of this page is the same cycle in detail.
 
@@ -50,7 +50,7 @@ nothing moves through the pipeline untagged ([WORKITEMS.md](WORKITEMS.md)).
 **Citizen (UI)**: sign in with GitHub in the sidebar. Your role (Builder /
 Release manager) is assigned by the platform owner. If your sandbox isn't in the
 "Pull my changes" picker yet: Settings → *Connect an org* (you sign in on
-Salesforce's own page; OrbitOps never sees your password).
+Salesforce's own page; Salesforce DevOps never sees your password).
 
 **Pro dev (Git)**:
 
@@ -84,7 +84,7 @@ The work item **must** appear in the branch name, the PR title, or a
 ## Phase 2 — Build
 
 **UI**: build with clicks in your sandbox (Setup: fields, flows, validation
-rules, layouts…). Nothing to do in OrbitOps while you build.
+rules, layouts…). Nothing to do in Salesforce DevOps while you build.
 
 **Git**: your choice of workflow —
 
@@ -220,7 +220,7 @@ data-loss warnings, Salesforce validation verdict) → optionally include
 destructive changes → type the stage name to confirm → execute
 (release-manager only, reason required, audit-logged).
 
-**Git**: Actions → *OrbitOps Rollback* → Run workflow → `env` +
+**Git**: Actions → *Salesforce DevOps Rollback* → Run workflow → `env` +
 `target_seq` + `mode: preview` first; read the safety report
 (`rollback-previews/<runId>.json` on `orbitops-meta`), then re-run with
 `mode: execute` and a reason.

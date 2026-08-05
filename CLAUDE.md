@@ -1,4 +1,4 @@
-# OrbitOps — sf-pipeline
+# Salesforce DevOps — sf-pipeline
 
 Salesforce CI/CD platform giving citizen developers a DevOps-Center-like experience
 on GitHub Actions + Salesforce CLI, with UI-driven rollback, diff visibility,
@@ -143,7 +143,7 @@ Node ESM scripts with `node --test` units · composite action
   skips non-stage branches (is_stage/is_last_stage outputs gate all jobs);
   back-promotion pairs derive from config (scripts/context/back-promotion-pairs.mjs);
   back-promote runs on the LAST stage, whatever it's called. Stages are now
-  added/removed from the OrbitOps Settings UI via config PRs (orbitops-ui
+  added/removed from the Salesforce DevOps Settings UI via config PRs (orbitops-ui
   TopologyEditor → addStage/removeStage actions; best-effort automates stage
   branch + GitHub Environment creation, remaining admin steps land as a PR
   checklist). New stage branches start from their downstream neighbour.
@@ -175,7 +175,7 @@ Node ESM scripts with `node --test` units · composite action
   are fully metadata-deployable incl. the JWT cert
   (ExtlClntAppGlobalOauthSettings.certificate, API 60+), scratch support
   landed Spring '26. Deployed scripts/setup/external-client-app/ (ECA
-  "Salesforce DevOps CI" + reused OrbitOps_CI permset + server.crt) to
+  "OrbitOps CI" + reused Salesforce DevOps_CI permset + server.crt) to
   stagingscratch, retrieved the ORG-MINTED consumer key (per-org, unlike
   connected apps' pinned key!), sf org login jwt succeeded. Implication:
   per-org SF_CLIENT_ID capture step; the shared ORBITOPS_JWT_CLIENT_ID
