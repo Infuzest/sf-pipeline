@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Locates a quick-deployable validation for a pushed merge commit (E4.2).
- * Finds the PR for the sha, its head's latest successful BUPA Salesforce DevOps run, and the
+ * Finds the PR for the sha, its head's latest successful Salesforce DevOps run, and the
  * validation-output artifact. Downloads quickdeploy.json to --dir.
  * Job outputs: found (true/false), validation_id, validated_sha.
  * Never fails the job — quick-deploy is an optimization; callers fall back.

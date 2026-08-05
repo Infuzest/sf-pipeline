@@ -1,10 +1,10 @@
-# BUPA Salesforce DevOps deploy — THIN CALLER. Do not add logic here.
+# Salesforce DevOps deploy — THIN CALLER. Do not add logic here.
 #
 # All deploy logic lives in _deploy.yml on MAIN (referenced with @main below,
 # deliberately a moving ref — that's the point): fixes merged to main apply to
 # every stage branch immediately. This stub is installed once on each stage
 # branch and never needs to change again.
-name: BUPA Salesforce DevOps Deploy
+name: Salesforce DevOps Deploy
 
 on:
   push:

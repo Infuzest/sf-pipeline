@@ -6,7 +6,7 @@
 > diff, and per-run live progress in the UI. See [README.md](README.md) for the
 > architecture as built and [docs/RUNBOOK.md](docs/RUNBOOK.md) for operations.
 
-> Working name: **BUPA Salesforce DevOps** (rename freely). A DevOps-Center-like experience built on
+> Working name: **Salesforce DevOps** (rename freely). A DevOps-Center-like experience built on
 > GitHub Actions + Salesforce CLI (`sf`), with work-item traceability (Jira + Azure DevOps),
 > UI-driven rollback, diff/merge visibility, configurable stage gates, and static code analysis.
 

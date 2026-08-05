@@ -1,4 +1,4 @@
-# BUPA Salesforce DevOps rollback (REQUIREMENTS.md epic E5). Reverse-delta between deploy tags,
+# Salesforce DevOps rollback (REQUIREMENTS.md epic E5). Reverse-delta between deploy tags,
 # validate-first, destructive changes opt-in, forward revert commit (never
 # force-push). Triggered from the UI (or manually) via workflow_dispatch.
 #
@@ -6,7 +6,7 @@
 # `execute` (environment-gated, runs only when mode=execute — performs the
 # rollback). Splitting them keeps preview freely runnable while the reviewer gate
 # still guards execution. Both auth via repo-level org-prefixed secrets.
-name: BUPA Salesforce DevOps Rollback
+name: Salesforce DevOps Rollback
 
 on:
   workflow_dispatch:

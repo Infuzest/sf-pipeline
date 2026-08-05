@@ -1,4 +1,4 @@
-# BUPA Salesforce DevOps — sf-pipeline
+# Salesforce DevOps — sf-pipeline
 
 Salesforce CI/CD platform giving citizen developers a DevOps-Center-like experience
 on GitHub Actions + Salesforce CLI, with UI-driven rollback, diff visibility,
@@ -143,7 +143,7 @@ Node ESM scripts with `node --test` units · composite action
   skips non-stage branches (is_stage/is_last_stage outputs gate all jobs);
   back-promotion pairs derive from config (scripts/context/back-promotion-pairs.mjs);
   back-promote runs on the LAST stage, whatever it's called. Stages are now
-  added/removed from the BUPA Salesforce DevOps Settings UI via config PRs (orbitops-ui
+  added/removed from the Salesforce DevOps Settings UI via config PRs (orbitops-ui
   TopologyEditor → addStage/removeStage actions; best-effort automates stage
   branch + GitHub Environment creation, remaining admin steps land as a PR
   checklist). New stage branches start from their downstream neighbour.

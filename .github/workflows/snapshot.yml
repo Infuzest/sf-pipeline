@@ -1,8 +1,8 @@
-# BUPA Salesforce DevOps drift snapshot (REQUIREMENTS.md E9.4): nightly, per environment,
+# Salesforce DevOps drift snapshot (REQUIREMENTS.md E9.4): nightly, per environment,
 # retrieve the org's citizen-safe metadata and diff it against the env branch.
 # Differences mean someone changed the org outside the pipeline — surfaced as a
 # "Drift report" issue (closed automatically when drift clears).
-name: BUPA Salesforce DevOps Drift Snapshot
+name: Salesforce DevOps Drift Snapshot
 
 on:
   schedule:

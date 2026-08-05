@@ -1,4 +1,4 @@
-# BUPA Salesforce DevOps Operator Runbook
+# Salesforce DevOps Operator Runbook
 
 For the platform owner. Citizen-facing help lives in `CITIZEN_GUIDE.md`;
 first-time setup in `SETUP.md`.

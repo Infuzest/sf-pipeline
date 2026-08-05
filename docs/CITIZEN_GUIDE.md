@@ -1,8 +1,8 @@
-# BUPA Salesforce DevOps — Builder's Guide
+# Salesforce DevOps — Builder's Guide
 
-You build in Salesforce with clicks; BUPA Salesforce DevOps gets your work safely from your
+You build in Salesforce with clicks; Salesforce DevOps gets your work safely from your
 org to production. No Git, no command line — everything happens at
-http://localhost:3000 (the BUPA Salesforce DevOps app).
+http://localhost:3000 (the Salesforce DevOps app).
 
 ## The journey
 
@@ -15,11 +15,11 @@ in your change's workspace, and the change appears on the board under
 ### 2. Build in your org
 Do your normal work in Setup — fields, flows, layouts, validation rules.
 If your org isn't connected yet: Settings → **Connect an org** → sign in on
-Salesforce's login page (BUPA Salesforce DevOps never sees your password).
+Salesforce's login page (Salesforce DevOps never sees your password).
 
 ### 3. Pull my changes
 Back in your change's workspace, pick your org and click **Pull my changes**.
-A progress banner shows while BUPA Salesforce DevOps fetches your work (usually a minute or
+A progress banner shows while Salesforce DevOps fetches your work (usually a minute or
 two — there's a link to watch the details), then the list refreshes by itself:
 your edits appear in plain language ("Field 'Discount' on Clinic — added").
 Untick anything that isn't part of your work item and **Remove selected** —
@@ -32,7 +32,7 @@ in red. A sidebar lists exactly which elements differ; zoom in/out or hit
 **Expand** for a full-screen view of big flows.
 
 ### 4. Submit for promotion
-When the list looks right, **Submit for promotion**. BUPA Salesforce DevOps starts the
+When the list looks right, **Submit for promotion**. Salesforce DevOps starts the
 checks automatically:
 
 - **What will deploy** — the exact contents, listed

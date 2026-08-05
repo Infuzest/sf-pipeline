@@ -1,6 +1,6 @@
-# BUPA Salesforce DevOps — The Release Cycle (both doors, one pipeline)
+# Salesforce DevOps — The Release Cycle (both doors, one pipeline)
 
-Two kinds of people ship Salesforce changes through BUPA Salesforce DevOps, and they use
+Two kinds of people ship Salesforce changes through Salesforce DevOps, and they use
 different front doors onto the **same** pipeline:
 
 - **Citizen developers** use the web UI (`http://localhost:3000`). No Git, no
@@ -36,7 +36,7 @@ ever deployed by hand.
 | **6. Promote** | *Promote to <stage>* button when green | Merge the PR — the merge **is** the promotion |
 | **7. Approve** (later stages) | Approval card on the pipeline board | Actions → the queued run → *Review deployments* |
 | **8. Onward** | Promote again to the next stage | Open a PR from the lower stage branch into the next |
-| **9. Roll back** | *Back out a release* → preview → confirm | Actions → *BUPA Salesforce DevOps Rollback* → `preview`, then `execute` |
+| **9. Roll back** | *Back out a release* → preview → confirm | Actions → *Salesforce DevOps Rollback* → `preview`, then `execute` |
 
 Work-item tagging is required either way (the UI adds it for you; pro devs put
 `PROJ-123` in the branch name, PR title, or a `Work-Items:` commit footer). Full

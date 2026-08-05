@@ -1,6 +1,6 @@
 # Weekly full-repo static analysis (REQUIREMENTS.md E7.4) — refreshes code
 # scanning results and the "Scanner burn-down" tracking issue.
-name: BUPA Salesforce DevOps Full Scan
+name: Salesforce DevOps Full Scan
 
 on:
   schedule:
