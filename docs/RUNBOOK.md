@@ -1,4 +1,4 @@
-# OrbitOps Operator Runbook
+# Salesforce DevOps Operator Runbook
 
 For the platform owner. Citizen-facing help lives in `CITIZEN_GUIDE.md`;
 first-time setup in `SETUP.md`.
@@ -6,7 +6,10 @@ first-time setup in `SETUP.md`.
 ## Workflow × permissions map (security review)
 
 All actions pinned by commit SHA; CLI/plugins pinned by version in
-`.github/actions/sf-auth`. `GITHUB_TOKEN` scopes per workflow:
+`.github/actions/sf-auth`. `pr-validate.yml` and `deploy.yml` are thin callers
+into the reusable `_pr-validate.yml` / `_deploy.yml` on **main** (single source
+of truth — see README "Single source of truth"); permissions are declared in
+the callers and bound the called jobs. `GITHUB_TOKEN` scopes per workflow:
 
 | Workflow | contents | pull-requests | deployments | security-events | issues |
 |---|---|---|---|---|---|

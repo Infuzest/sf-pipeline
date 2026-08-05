@@ -1,28 +1,16 @@
-# OrbitOps pipeline definition — the single source of truth for stages and gates.
+# Salesforce DevOps pipeline definition — the single source of truth for stages and gates.
 # Edited via PR only (see CODEOWNERS). Validated by scripts/validate-pipeline-config.mjs.
+# Stage order in this file IS the promotion order (left to right on the board).
 
-# Orgs builders can pull changes from ("Pull my changes" sources). Register any
-# sandbox/scratch/dev org here: pick an org key, add its repo-level secrets
-# (<KEY>_SF_AUTH_URL for sfdx-url auth, or the <KEY>_SF_CLIENT_ID/... set for jwt),
-# then list it. See docs/SETUP.md §"Registering dev orgs".
 devOrgs:
-  - name: "Shared dev org (also INT)"
+  - name: Shared dev org (also INT)
     org: INT
     authMethod: sfdx-url
-
 pipeline:
-  - branch: integration
-    org: INT
-    environment: integration
-    authMethod: sfdx-url
-    testLevel: Conditional # NoTestRun unless the delta contains Apex, then RunLocalTests
-    gates:
-      scannerMaxSeverity: 3
-      minCoverage: 0
   - branch: uat
     org: UAT
     environment: uat
-    authMethod: sfdx-url
+    authMethod: jwt
     testLevel: RunLocalTests
     gates:
       scannerMaxSeverity: 2
@@ -37,4 +25,3 @@ pipeline:
       scannerMaxSeverity: 2
       minCoverage: 80
       requiredReviewers: true
-      # workItemStatus: ["Ready for Release"]   # post-PoC gate — requires live tracker connection

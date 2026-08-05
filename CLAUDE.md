@@ -1,4 +1,4 @@
-# OrbitOps — sf-pipeline
+# Salesforce DevOps — sf-pipeline
 
 Salesforce CI/CD platform giving citizen developers a DevOps-Center-like experience
 on GitHub Actions + Salesforce CLI, with UI-driven rollback, diff visibility,
@@ -127,3 +127,56 @@ Node ESM scripts with `node --test` units · composite action
   layout and caps it with a synthetic End card; Tailwind utility classes on SVG
   shapes proved unreliable across build modes (unstyled rect renders black) —
   the diagram uses explicit fill/stroke attributes only.
+- 2026-07-15: Connect-an-org v2 = JWT via pre-auth (user's design). Root cause of
+  v1 failures: new orgs FORCE refresh-token rotation (Support-locked setting) —
+  any stored refresh token dies on first use, so sealed-secret auth can never
+  work. v2 stores only {username, instanceHost} in the registry; CI does JWT
+  Bearer with the shared OrbitOps CI cert (repo secrets ORBITOPS_JWT_CLIENT_ID +
+  ORBITOPS_JWT_KEY). Per-org one-time admin step: OAuth Usage → Install →
+  admin-approve + profile. Legacy sfdx-url registry entries still resolve.
+  Long-term (user): managed-package connected app → prod install inherits into
+  refreshed sandboxes, scratch orgs install post-creation → pure self-service.
+  Note: ConnectedApp metadata deploys silently ignore isRefreshTokenRotationEnabled.
+- 2026-07-17: Topology fully de-hardcoded — stage branches live ONLY in
+  pipeline.yml. deploy.yml/pr-validate.yml trigger broadly (branches-ignore
+  feature/**, orbitops-meta, orbitops/**) and `resolve-stage.mjs --optional`
+  skips non-stage branches (is_stage/is_last_stage outputs gate all jobs);
+  back-promotion pairs derive from config (scripts/context/back-promotion-pairs.mjs);
+  back-promote runs on the LAST stage, whatever it's called. Stages are now
+  added/removed from the Salesforce DevOps Settings UI via config PRs (orbitops-ui
+  TopologyEditor → addStage/removeStage actions; best-effort automates stage
+  branch + GitHub Environment creation, remaining admin steps land as a PR
+  checklist). New stage branches start from their downstream neighbour.
+- 2026-07-17: Reusable-workflow refactor — pipeline logic is now single-source
+  on main. `_pr-validate.yml`/`_deploy.yml` are `workflow_call` workflows
+  holding ALL jobs; `pr-validate.yml`/`deploy.yml` are thin callers pinning
+  `@main` (installed once per stage branch, never edited again). Jobs do a
+  dual checkout: workspace = the branch under validation/deploy, `.pipeline/` =
+  scripts + config + sf-auth from main (config-only scripts run with
+  working-directory .pipeline). Consequence: fixes merged to main apply to
+  every stage immediately — no more per-branch workflow syncing. Check runs
+  are now named "checks / <job>"; the UI strips the prefix (toCheckChips).
+  Rollout order matters: main PR first (creates the `_*.yml`), then the caller
+  stubs onto uat/integration. Pro-code path documented in
+  docs/DEVELOPER_GUIDE.md — the whole process works from plain Git/GitHub;
+  the UI is optional.
+- 2026-07-17: Coverage-gate bug fix — a metadata-only change (no Apex) was
+  wrongly blocked by "No Apex tests ran, but this stage requires ≥ 75%".
+  check-coverage.mjs now takes `--has-apex`; when false, coverage is
+  not-applicable and the gate passes. Apex-present-but-no-coverage still fails.
+  Gate logic extracted to `evaluateCoverage()` with unit tests. pr-validate.yml
+  passes `needs.delta.outputs.has_apex` (same signal that already sets
+  NoTestRun in the validate step).
+- 2026-08-05: CORRECTION — scratch orgs CAN use certificate/JWT auth; the
+  earlier "ECA JWT isn't scriptable" claim was wrong (user challenged it,
+  official docs + live test confirmed). Facts: Spring '26 blocks
+  creating/deploying NEW connected apps everywhere ("You can't create a
+  connected app" on metadata deploy too — reproduced); External Client Apps
+  are fully metadata-deployable incl. the JWT cert
+  (ExtlClntAppGlobalOauthSettings.certificate, API 60+), scratch support
+  landed Spring '26. Deployed scripts/setup/external-client-app/ (ECA
+  "OrbitOps CI" + reused Salesforce DevOps_CI permset + server.crt) to
+  stagingscratch, retrieved the ORG-MINTED consumer key (per-org, unlike
+  connected apps' pinned key!), sf org login jwt succeeded. Implication:
+  per-org SF_CLIENT_ID capture step; the shared ORBITOPS_JWT_CLIENT_ID
+  pattern only holds for orgs sharing the legacy connected app.

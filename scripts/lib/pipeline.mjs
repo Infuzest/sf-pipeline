@@ -22,7 +22,17 @@ export function resolveOrg(config, orgKey, connectedOrgs = []) {
   const dev = config.devOrgs.find((d) => d.org === orgKey);
   if (dev) return { org: dev.org, authMethod: dev.authMethod, name: dev.name };
   const connected = connectedOrgs.find((d) => d.org === orgKey);
-  if (connected) return { org: connected.org, authMethod: connected.authMethod ?? "sfdx-url", name: connected.name };
+  if (connected) {
+    // jwt entries (Connect-an-org v2) carry the identity for the shared-cert
+    // JWT login; sfdx-url entries are legacy sealed-secret connections.
+    return {
+      org: connected.org,
+      authMethod: connected.authMethod ?? "sfdx-url",
+      name: connected.name,
+      username: connected.username,
+      instanceHost: connected.instanceHost,
+    };
+  }
   const stage = config.pipeline.find((s) => s.org === orgKey);
   if (stage) return { org: stage.org, authMethod: stage.authMethod, name: `${stage.environment} org` };
   const known = [

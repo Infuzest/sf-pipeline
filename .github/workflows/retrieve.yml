@@ -1,7 +1,7 @@
-# OrbitOps citizen workspace — "Pull my changes" (REQUIREMENTS.md E6.2).
+# Salesforce DevOps citizen workspace — "Pull my changes" (REQUIREMENTS.md E6.2).
 # Retrieves a builder's sandbox edits (via source tracking) into their
 # work-item branch as a bot commit. Dispatched by the UI.
-name: OrbitOps Retrieve
+name: Salesforce DevOps Retrieve
 
 on:
   workflow_dispatch:
@@ -31,6 +31,10 @@ jobs:
     outputs:
       org: ${{ steps.org.outputs.org }}
       auth_method: ${{ steps.org.outputs.auth_method }}
+      # Set only for UI-connected orgs (JWT with the shared certificate);
+      # empty for stage/dev orgs, which keep their per-org secrets.
+      username: ${{ steps.org.outputs.username }}
+      instance_url: ${{ steps.org.outputs.instance_url }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
@@ -54,13 +58,17 @@ jobs:
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      # Connected orgs (context.username set) authenticate via JWT with the
+      # shared OrbitOps CI certificate — no per-org tokens exist, so Salesforce's
+      # forced refresh-token rotation can't break them. Stage/dev orgs keep
+      # their per-org secrets.
       - uses: ./.github/actions/sf-auth
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
-          client-id: ${{ secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
-          username: ${{ secrets[format('{0}_SF_USERNAME', needs.context.outputs.org)] }}
-          jwt-key: ${{ secrets[format('{0}_SF_JWT_KEY', needs.context.outputs.org)] }}
-          instance-url: ${{ secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
+          client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
+          username: ${{ needs.context.outputs.username != '' && needs.context.outputs.username || secrets[format('{0}_SF_USERNAME', needs.context.outputs.org)] }}
+          jwt-key: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_KEY || secrets[format('{0}_SF_JWT_KEY', needs.context.outputs.org)] }}
+          instance-url: ${{ needs.context.outputs.instance_url != '' && needs.context.outputs.instance_url || secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
           alias: source-org
 
@@ -97,7 +105,7 @@ jobs:
             WORK_ITEM=$(echo "$WB" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+|AB#[0-9]+' | head -1 || true)
             git commit -q \
               -m "Pull changes from the ${{ inputs.source_org }} org" \
-              -m "Retrieved via OrbitOps for $WB." \
+              -m "Retrieved via Salesforce DevOps for $WB." \
               -m "Work-Items: ${WORK_ITEM:-POC-0}"
             git push -q origin "HEAD:$WB"
             {
