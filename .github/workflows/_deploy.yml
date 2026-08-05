@@ -1,0 +1,275 @@
+# Salesforce DevOps deploy — REUSABLE workflow (single source of truth).
+#
+# All deploy logic lives HERE, on main. Every stage branch carries only a thin
+# caller (deploy.yml) that does `uses: ...@main`, so a fix merged to main
+# applies to every stage immediately — no per-branch syncing.
+#
+# Two checkouts per job:
+#   - the default workspace = the stage branch being deployed
+#   - .pipeline/            = scripts, config, and tooling from MAIN
+name: Salesforce DevOps deploy logic
+
+on:
+  workflow_call:
+    inputs:
+      reason:
+        description: "Why a manual deploy was requested (audit log); empty for merge-triggered deploys"
+        required: false
+        default: ""
+        type: string
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  context:
+    name: Resolve stage
+    runs-on: ubuntu-latest
+    outputs:
+      is_stage: ${{ steps.stage.outputs.is_stage }}
+      is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
+      org: ${{ steps.stage.outputs.org }}
+      environment: ${{ steps.stage.outputs.environment }}
+      auth_method: ${{ steps.stage.outputs.auth_method }}
+      test_level: ${{ steps.stage.outputs.test_level }}
+      has_changes: ${{ steps.precheck.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { fetch-depth: 0, fetch-tags: true }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - id: stage
+        working-directory: .pipeline
+        run: node scripts/context/resolve-stage.mjs "${{ github.ref_name }}" --optional
+      - uses: ./.pipeline/.github/actions/sf-auth
+        if: steps.stage.outputs.is_stage == 'true'
+        with: { auth-method: none } # CLI + sfdx-git-delta only, no org auth
+      - name: Anything to deploy?
+        id: precheck
+        if: steps.stage.outputs.is_stage == 'true'
+        # Decided BEFORE the environment gate: docs/pipeline-code pushes produce
+        # an empty delta and used to sit at the approval gate forever, queueing
+        # every later push behind them (deploy-<env> concurrency group).
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.stage.outputs.environment }}"
+          LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV" --latest)
+          if [ -z "$LAST_TAG" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "First deploy to $ENV — full deploy required"
+            # Publish a "full" preview so approvers still see what's happening.
+            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh "" "$ENV" full || true
+            exit 0
+          fi
+          mkdir -p precheck
+          sf sgd source delta --from "$LAST_TAG" --to HEAD --output-dir precheck
+          CHANGED=$(grep -c "<members>" precheck/package/package.xml 2>/dev/null || true)
+          DESTR=$(grep -c "<members>" precheck/destructiveChanges/destructiveChanges.xml 2>/dev/null || true)
+          if [ "${CHANGED:-0}" = "0" ] && [ "${DESTR:-0}" = "0" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No deployable changes since $LAST_TAG — the gated deploy job will be skipped."
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "Deployable delta since $LAST_TAG: ${CHANGED:-0} changed, ${DESTR:-0} destructive."
+            # Publish the authoritative component list BEFORE the approval gate
+            # so the UI's approval card shows exactly what Salesforce receives.
+            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh precheck "$ENV" delta || true
+          fi
+
+  deploy:
+    name: Deploy to ${{ needs.context.outputs.org }}
+    needs: context
+    if: needs.context.outputs.is_stage == 'true' && needs.context.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ needs.context.outputs.environment }} # required reviewers gate uat/production
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { fetch-depth: 0, fetch-tags: true }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - uses: ./.pipeline/.github/actions/sf-auth
+        with:
+          auth-method: ${{ needs.context.outputs.auth_method }}
+          client-id: ${{ secrets.SF_CLIENT_ID }}
+          username: ${{ secrets.SF_USERNAME }}
+          jwt-key: ${{ secrets.SF_JWT_KEY }}
+          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+          auth-url: ${{ secrets.SF_AUTH_URL }}
+          alias: target-org
+
+      - name: Create GitHub Deployment record
+        id: gh-deploy
+        run: |
+          ID=$(printf '{"ref":"%s","environment":"%s","auto_merge":false,"required_contexts":[]}' \
+              "$GITHUB_SHA" "${{ needs.context.outputs.environment }}" \
+            | gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments" --input - --jq '.id' 2>/dev/null || true)
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Compute deploy range and delta
+        id: range
+        run: |
+          ENV="${{ needs.context.outputs.environment }}"
+          LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV" --latest)
+          echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
+          mkdir -p deploy-package
+          if [ -z "$LAST_TAG" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "First deploy to $ENV — deploying full force-app"
+          else
+            echo "mode=delta" >> "$GITHUB_OUTPUT"
+            sf sgd source delta --from "$LAST_TAG" --to "HEAD" --output-dir deploy-package
+            node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
+          fi
+
+      - name: Attempt quick-deploy
+        id: quick
+        if: steps.range.outputs.mode == 'delta' && steps.range.outputs.empty != 'true'
+        run: |
+          node .pipeline/scripts/deploy/find-quickdeploy.mjs "$GITHUB_SHA" --dir qd-artifact
+          if [ -f qd-artifact/quickdeploy.json ]; then
+            VALIDATED_SHA=$(node -pe 'JSON.parse(require("fs").readFileSync("qd-artifact/quickdeploy.json","utf8")).sha')
+            VALIDATION_ID=$(node -pe 'JSON.parse(require("fs").readFileSync("qd-artifact/quickdeploy.json","utf8")).validationId')
+            if git fetch -q origin "$VALIDATED_SHA" 2>/dev/null && \
+               [ "$(git rev-parse "$VALIDATED_SHA^{tree}")" = "$(git rev-parse "HEAD^{tree}")" ]; then
+              echo "Trees match — quick-deploying validation $VALIDATION_ID"
+              if sf project deploy quick --job-id "$VALIDATION_ID" --target-org target-org --wait 60 --json > deploy-result.json; then
+                echo "done=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "Quick-deploy failed — falling back to full deploy"; cat deploy-result.json || true
+              fi
+            else
+              echo "Validated tree differs from merge commit (or unfetchable) — full deploy"
+            fi
+          fi
+
+      - name: Deploy
+        id: sfdeploy
+        if: >-
+          steps.quick.outputs.done != 'true' &&
+          (steps.range.outputs.mode == 'full' || steps.range.outputs.empty != 'true')
+        run: |
+          TEST_LEVEL="${{ needs.context.outputs.test_level }}"
+          ARGS=(--target-org target-org --wait 60 --json --ignore-conflicts)
+          if [ "${{ steps.range.outputs.mode }}" = "full" ]; then
+            ARGS+=(--source-dir force-app)
+            HAS_APEX=$(ls force-app/main/default/classes/*.cls 2>/dev/null | head -1)
+          else
+            ARGS+=(--manifest deploy-package/package/package.xml)
+            if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && \
+               grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
+              ARGS+=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
+            fi
+            HAS_APEX=$(grep -l "ApexClass\|ApexTrigger" deploy-package/package/package.xml 2>/dev/null || true)
+          fi
+          if [ "$TEST_LEVEL" = "Conditional" ]; then
+            if [ -n "$HAS_APEX" ]; then TEST_LEVEL=RunLocalTests; else TEST_LEVEL=NoTestRun; fi
+          fi
+          echo "Deploying (mode=${{ steps.range.outputs.mode }}, tests=$TEST_LEVEL)"
+          sf project deploy start "${ARGS[@]}" --test-level "$TEST_LEVEL" > deploy-result.json || true
+          node .pipeline/scripts/deploy/parse-validate-result.mjs deploy-result.json --errors errors.md
+
+      - name: Record deploy history
+        id: record
+        if: steps.range.outputs.mode == 'full' || steps.range.outputs.empty != 'true'
+        run: |
+          git config user.name "orbitops-bot"
+          git config user.email "orbitops-bot@users.noreply.github.com"
+          ENV="${{ needs.context.outputs.environment }}"
+          SEQ=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV")
+          TAG="deploy/${ENV}/${SEQ}"
+          RANGE_FROM="${{ steps.range.outputs.last_tag }}"
+          if [ -n "$RANGE_FROM" ]; then RANGE="${RANGE_FROM}..HEAD"; else RANGE="HEAD"; fi
+          git log --format=%B%x00 "$RANGE" | node -e "
+            const msgs=require('fs').readFileSync(0,'utf8').split('\x00').map(s=>s.trim()).filter(Boolean);
+            require('fs').writeFileSync('commit-messages.json', JSON.stringify(msgs));"
+          node .pipeline/scripts/deploy/manifest.mjs --env "$ENV" --seq "$SEQ" --sha "$GITHUB_SHA" \
+            --delta-dir deploy-package --commits-file commit-messages.json \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --actor "$GITHUB_ACTOR" --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --extra '{"reason": ${{ toJSON(inputs.reason || '') }}, "mode": "${{ steps.range.outputs.mode }}"}' \
+            --out "manifest.json"
+          git tag -a "$TAG" -m "Salesforce DevOps deploy: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          git push -q origin "$TAG"
+          # commit manifest to the orbitops-meta branch (retry for cross-env races)
+          for attempt in 1 2 3; do
+            git fetch -q origin orbitops-meta 2>/dev/null || true
+            if git show-ref -q refs/remotes/origin/orbitops-meta; then
+              git worktree add -q .meta origin/orbitops-meta
+            else
+              git worktree add -q --detach .meta
+              git -C .meta checkout -q --orphan orbitops-meta
+              git -C .meta rm -rfq . 2>/dev/null || true
+            fi
+            mkdir -p ".meta/deployments/${ENV}"
+            cp manifest.json ".meta/deployments/${ENV}/${SEQ}.json"
+            git -C .meta add -A
+            git -C .meta commit -q -m "Record ${TAG}"
+            if git -C .meta push -q origin HEAD:orbitops-meta; then
+              git worktree remove -f .meta; break
+            fi
+            git worktree remove -f .meta
+            echo "meta push race (attempt $attempt), retrying"
+          done
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Notify work items
+        run: node .pipeline/scripts/workitems/post-deployment.mjs manifest.json --status deployed --out workitem-postbacks.json
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: workitem-postbacks
+          path: workitem-postbacks.json
+          if-no-files-found: ignore
+
+      - name: Notify on failure (optional Slack/Teams webhook)
+        if: failure()
+        env:
+          WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+        run: |
+          [ -z "$WEBHOOK" ] && { echo "No NOTIFY_WEBHOOK_URL secret — skipping."; exit 0; }
+          curl -sf -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"❌ Salesforce DevOps deploy to ${{ needs.context.outputs.environment }} failed: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
+            "$WEBHOOK" || echo "webhook post failed (non-blocking)"
+
+      - name: Mark deployment status
+        if: always()
+        run: |
+          [ -z "${{ steps.gh-deploy.outputs.id }}" ] && exit 0
+          STATE=$([ "${{ job.status }}" = "success" ] && echo success || echo failure)
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${{ steps.gh-deploy.outputs.id }}/statuses" \
+            -f state="$STATE" \
+            -f log_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > /dev/null
+
+  back-promote:
+    name: Back-promotion PRs
+    needs: [context, deploy]
+    # Runs after a deploy to the LAST pipeline stage (production), whatever
+    # that stage is called — derived from pipeline.yml, not hardcoded.
+    if: needs.context.outputs.is_last_stage == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - name: Open sync PRs
+        working-directory: .pipeline
+        run: |
+          PAIRS=$(node scripts/context/back-promotion-pairs.mjs)
+          for PAIR in $PAIRS; do
+            FROM="${PAIR%%:*}"; TO="${PAIR##*:}"
+            if [ "$(gh pr list --repo "$GITHUB_REPOSITORY" --base "$TO" --head "$FROM" --state open --json number --jq length)" = "0" ]; then
+              gh label create back-promotion --repo "$GITHUB_REPOSITORY" --color 0e8a16 2>/dev/null || true
+              BODY=$(printf 'Automated sync after a production deploy so lower stages do not drift.\n\nWork-Items: POC-0')
+              gh pr create --repo "$GITHUB_REPOSITORY" --base "$TO" --head "$FROM" \
+                --title "Back-promotion: sync $TO with $FROM (POC-0)" \
+                --label back-promotion \
+                --body "$BODY" || echo "no diff between $FROM and $TO"
+            fi
+          done

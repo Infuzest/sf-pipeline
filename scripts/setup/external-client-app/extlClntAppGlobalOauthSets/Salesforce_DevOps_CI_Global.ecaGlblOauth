@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtlClntAppGlobalOauthSettings xmlns="http://soap.sforce.com/2006/04/metadata">
+    <externalClientApplication>Salesforce_DevOps_CI</externalClientApplication>
+    <label>Salesforce DevOps CI Global OAuth</label>
+    <callbackUrl>http://localhost:1717/OauthRedirect
+http://localhost:3000/api/orgs/callback</callbackUrl>
+    <certificate>-----BEGIN CERTIFICATE-----
+MIIDDTCCAfWgAwIBAgIUSifBz4bElEKTX4fUFGmXnns/1fowDQYJKoZIhvcNAQEL
+BQAwFjEUMBIGA1UEAwwLb3JiaXRvcHMtY2kwHhcNMjYwNzE2MDkzMjE4WhcNMjgw
+NzE1MDkzMjE4WjAWMRQwEgYDVQQDDAtvcmJpdG9wcy1jaTCCASIwDQYJKoZIhvcN
+AQEBBQADggEPADCCAQoCggEBALTmr0g4aeKBjC0R6HUFdPfwKeTGzaenKzRCd0aZ
+pL+9KkuDo11ZkSx7HBqTDNbyXtz4rkCbscDnebgYcoTIDAWBrca8YiDrZkovdBlF
+pa43lvhj2Z8DsTAdlRHdcmXZ0hNEI85l1aEZNpAohkVVzcWMIUsXA6rrhn6b2eex
+KjBDyp4YsrQ3Rap3SSXb8x4co+0LwjTuNIqR0FQhpuOYCIGzgrnR35JxyW1X0u+1
+Zqj4+GXicsuFmopTCBHeS5lXlfoof2zdm3/yTPcVGwDXOYdD8lU9jNqyB+qPcO2h
+vYBxHiMkQIko5k4l5RME/L5HUAR9WqKabNNxbSvHx/CFZLcCAwEAAaNTMFEwHQYD
+VR0OBBYEFDGVjNDNZRIhdrpqpkXQ1Lu+DxjVMB8GA1UdIwQYMBaAFDGVjNDNZRIh
+drpqpkXQ1Lu+DxjVMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEB
+AIcEu6U1acFCMVZHPyJtVYqU5FIvWeaz82zgBoWMDBG1kcOgSBCaehgjA1WagtaQ
+L+a0q/NXI0XfiALK7OyQ54dSZ7oswZo8XFq8zAQ32jys/qvszT/Qt1HQT/6G7gAd
+J4ZvYIla2ZpQIOkDi6NVJ9xEM+LSwHmeCmF25BQlWJaOuGmYc8QCA0vNJ0sq2cXb
+yBxX4UMOO3nsGcpoPPQY4nuVX+sVQ7nzpvRmXGMbnWmOaedjeAdYTq2PbLNlBbeP
+33uge4zWFzi7lawPpv9pC6dJmI6/R3W/+W4lQBA3pvsASzzxUZ3QEcIQ8lIl1P6b
+gRzkR6e0WrInwZBTUJH4fpM=
+-----END CERTIFICATE-----</certificate>
+    <isConsumerSecretOptional>true</isConsumerSecretOptional>
+    <isPkceRequired>true</isPkceRequired>
+</ExtlClntAppGlobalOauthSettings>

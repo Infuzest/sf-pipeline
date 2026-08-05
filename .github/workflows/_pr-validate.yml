@@ -1,0 +1,269 @@
+# Salesforce DevOps PR validation — REUSABLE workflow (single source of truth).
+#
+# All validation logic lives HERE, on main. Every stage branch carries only a
+# thin caller (pr-validate.yml) that does `uses: ...@main`, so a fix merged to
+# main applies to every promotion immediately — no per-branch syncing.
+#
+# Two checkouts per job:
+#   - the default workspace = the code under validation (the PR merge ref)
+#   - .pipeline/            = scripts, config, and tooling from MAIN
+# Pipeline behaviour (gates, scripts, stage map) always comes from main;
+# only force-app content comes from the branch being validated.
+name: Salesforce DevOps validation
+
+on:
+  workflow_call: {}
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  context:
+    name: Resolve stage
+    runs-on: ubuntu-latest
+    outputs:
+      is_stage: ${{ steps.stage.outputs.is_stage }}
+      org: ${{ steps.stage.outputs.org }}
+      environment: ${{ steps.stage.outputs.environment }}
+      auth_method: ${{ steps.stage.outputs.auth_method }}
+      test_level: ${{ steps.stage.outputs.test_level }}
+      min_coverage: ${{ steps.stage.outputs.min_coverage }}
+      scanner_max_severity: ${{ steps.stage.outputs.scanner_max_severity }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - id: stage
+        working-directory: .pipeline
+        run: node scripts/context/resolve-stage.mjs "${{ github.base_ref }}" --optional
+
+  delta:
+    name: What will deploy
+    needs: context
+    if: needs.context.outputs.is_stage == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      empty: ${{ steps.render.outputs.empty }}
+      has_apex: ${{ steps.render.outputs.has_apex }}
+      destructive_count: ${{ steps.render.outputs.destructive_count }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { fetch-depth: 0 }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - uses: ./.pipeline/.github/actions/sf-auth
+        with: { auth-method: none }
+      - name: Compute delta package
+        run: |
+          mkdir -p deploy-package
+          sf sgd source delta --from "origin/${{ github.base_ref }}" --to "HEAD" --output-dir deploy-package
+      - name: Render deploy preview
+        id: render
+        run: node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
+      - name: Post sticky comment
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:deploy-preview -->" deploy-package/comment.md
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: deploy-package
+          path: deploy-package/
+
+  work-items:
+    name: Work items
+    needs: context
+    if: needs.context.outputs.is_stage == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - name: Collect PR commit messages
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${{ github.event.pull_request.number }}/commits" \
+            --paginate --jq '[.[].commit.message]' > commits.json
+      - name: Check work-item tagging
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: node .pipeline/scripts/workitems/check.mjs --title "$PR_TITLE" --branch "$HEAD_REF" --commits-file commits.json
+
+  scan:
+    name: Code scan
+    needs: context
+    if: needs.context.outputs.is_stage == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { fetch-depth: 0 }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - uses: ./.pipeline/.github/actions/sf-auth
+        with: { auth-method: none }
+      - name: Collect changed files
+        id: files
+        run: |
+          git diff --name-only --diff-filter=d "origin/${{ github.base_ref }}...HEAD" -- force-app > changed.txt
+          COUNT=$(grep -c . changed.txt || true)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Changed files ($COUNT):"; cat changed.txt
+      - name: Scan changed files
+        id: scan
+        if: steps.files.outputs.count != '0'
+        run: |
+          WORKSPACE_ARGS=()
+          while IFS= read -r f; do [ -n "$f" ] && WORKSPACE_ARGS+=(--workspace "$f"); done < changed.txt
+          sf code-analyzer run "${WORKSPACE_ARGS[@]}" --config-file .pipeline/code-analyzer.yml --output-file results.sarif
+          # code scanning rejects a SARIF with zero runs (nothing scannable changed)
+          HAS_RUNS=$(node -pe 'JSON.parse(require("fs").readFileSync("results.sarif","utf8")).runs?.length > 0' 2>/dev/null || echo false)
+          echo "has_runs=$HAS_RUNS" >> "$GITHUB_OUTPUT"
+      - name: Upload SARIF to code scanning
+        if: steps.scan.outputs.has_runs == 'true'
+        uses: github/codeql-action/upload-sarif@df409f7d9260372bd5f19e5b04e83cb3c43714ae # v3.27.9
+        with:
+          sarif_file: results.sarif
+          category: orbitops-scanner
+      - name: Severity gate
+        id: gate
+        run: |
+          GATE_FAILED=0
+          node .pipeline/scripts/scanner/gate.mjs results.sarif "${{ needs.context.outputs.scanner_max_severity }}" \
+            --baseline .pipeline/.orbitops/scanner-baseline.json --out scan-summary.md || GATE_FAILED=1
+          { echo "<!-- orbitops:scan -->"; cat scan-summary.md; } > scan-comment.md
+          cat scan-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "failed=$GATE_FAILED" >> "$GITHUB_OUTPUT"
+      - name: Post scan comment
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:scan -->" scan-comment.md
+      - name: Enforce gate
+        if: steps.gate.outputs.failed == '1'
+        run: |
+          echo "New findings at or above the blocking severity — see the scan comment on the PR."
+          exit 1
+
+  validate:
+    name: Validate against target org
+    needs: [context, delta]
+    if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      succeeded: ${{ steps.parse.outputs.succeeded }}
+      validation_id: ${{ steps.parse.outputs.validation_id }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { fetch-depth: 0 }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - uses: ./.pipeline/.github/actions/sf-auth
+        with:
+          auth-method: ${{ needs.context.outputs.auth_method }}
+          client-id: ${{ secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
+          username: ${{ secrets[format('{0}_SF_USERNAME', needs.context.outputs.org)] }}
+          jwt-key: ${{ secrets[format('{0}_SF_JWT_KEY', needs.context.outputs.org)] }}
+          instance-url: ${{ secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
+          auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
+          alias: target-org
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: deploy-package
+          path: deploy-package/
+      - name: Check-only deploy
+        run: |
+          TEST_LEVEL="${{ needs.context.outputs.test_level }}"
+          if [ "$TEST_LEVEL" = "Conditional" ]; then
+            if [ "${{ needs.delta.outputs.has_apex }}" = "true" ]; then TEST_LEVEL=RunLocalTests; else TEST_LEVEL=NoTestRun; fi
+          fi
+          DESTRUCTIVE_ARGS=()
+          if [ "${{ needs.delta.outputs.destructive_count }}" != "0" ]; then
+            DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
+          fi
+          # `sf project deploy validate` rejects NoTestRun (validations exist to
+          # enable quick-deploys, which require tests). Use a dry-run for that case;
+          # it has identical check-only semantics but yields no quick-deploy ID.
+          if [ "$TEST_LEVEL" = "NoTestRun" ]; then
+            echo "VALIDATE_MODE=dry-run" >> "$GITHUB_ENV"
+            echo "Dry-run check-only deploy (no tests)"
+            sf project deploy start --dry-run --ignore-conflicts \
+              --manifest deploy-package/package/package.xml \
+              "${DESTRUCTIVE_ARGS[@]}" \
+              --test-level NoTestRun \
+              --target-org target-org \
+              --wait 60 --json > validate-result.json || true
+          else
+            echo "VALIDATE_MODE=validate" >> "$GITHUB_ENV"
+            echo "Validating with test level: $TEST_LEVEL"
+            sf project deploy validate \
+              --manifest deploy-package/package/package.xml \
+              "${DESTRUCTIVE_ARGS[@]}" \
+              --test-level "$TEST_LEVEL" \
+              --target-org target-org \
+              --wait 60 --json > validate-result.json || true
+          fi
+      - name: Parse result
+        id: parse
+        run: |
+          QUICKDEPLOY_ARGS=()
+          if [ "$VALIDATE_MODE" = "validate" ]; then QUICKDEPLOY_ARGS=(--quickdeploy quickdeploy.json); fi
+          VALIDATE_FAILED=0
+          node .pipeline/scripts/deploy/parse-validate-result.mjs validate-result.json \
+            "${QUICKDEPLOY_ARGS[@]}" --coverage coverage.json --errors errors.md || VALIDATE_FAILED=1
+          if [ -f errors.md ]; then
+            { echo "<!-- orbitops:validate-errors -->"; cat errors.md; } > errors-comment.md
+          else
+            printf '<!-- orbitops:validate-errors -->\n## ✅ Validation succeeded against %s\n' "${{ needs.context.outputs.org }}" > errors-comment.md
+          fi
+          exit "$VALIDATE_FAILED"
+      - name: Post validation status comment
+        if: always()
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: always()
+        with:
+          name: validation-output
+          path: |
+            quickdeploy.json
+            coverage.json
+          if-no-files-found: ignore
+
+  coverage:
+    name: Coverage gate
+    needs: [context, delta, validate]
+    if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: validation-output
+      - name: Enforce minimum coverage
+        run: |
+          if [ ! -f coverage.json ]; then
+            echo '{"overall": null, "perClass": []}' > coverage.json
+          fi
+          node .pipeline/scripts/deploy/check-coverage.mjs coverage.json "${{ needs.context.outputs.min_coverage }}" \
+            --has-apex "${{ needs.delta.outputs.has_apex }}" --summary gate.md
+          cat gate.md >> "$GITHUB_STEP_SUMMARY"

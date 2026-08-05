@@ -26,5 +26,11 @@ try {
   process.exit(1);
 }
 
-setOutputs({ org: org.org, auth_method: org.authMethod, display_name: org.name });
+setOutputs({
+  org: org.org,
+  auth_method: org.authMethod,
+  display_name: org.name,
+  username: org.username ?? "",
+  instance_url: org.instanceHost ? `https://${org.instanceHost}` : "",
+});
 console.log(`Org "${key}": ${org.name} (auth=${org.authMethod})`);

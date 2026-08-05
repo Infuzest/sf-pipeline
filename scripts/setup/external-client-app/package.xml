@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types><members>OrbitOps_CI</members><name>PermissionSet</name></types>
+    <types><members>Salesforce_DevOps_CI</members><name>ExternalClientApplication</name></types>
+    <types><members>Salesforce_DevOps_CI_Global</members><name>ExtlClntAppGlobalOauthSettings</name></types>
+    <types><members>Salesforce_DevOps_CI_Oauth</members><name>ExtlClntAppOauthSettings</name></types>
+    <types><members>Salesforce_DevOps_CI_Policy</members><name>ExtlClntAppOauthConfigurablePolicies</name></types>
+    <version>64.0</version>
+</Package>
