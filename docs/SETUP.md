@@ -48,13 +48,29 @@ Approving directly on GitHub keeps working either way.
 Two methods, chosen per stage via the `auth-method` input of the
 `.github/actions/sf-auth` composite action:
 
-- **`jwt`** (production/persistent orgs): connected app + certificate, below.
-- **`sfdx-url`** (scratch-org stages): orgs created after Salesforce's Spring '26
-  change can't create connected apps (External Client Apps' JWT flow still needs
-  UI steps, so it isn't scriptable either). Instead, store the CLI's auth URL:
+- **`jwt`** (ANY org, including scratch orgs): a certificate-bearing app +
+  the JWT bearer flow. On legacy orgs this is the connected app below; on orgs
+  created after Salesforce's Spring '26 change (which blocks *creating/deploying
+  new connected apps*), deploy the **External Client App** instead — it is fully
+  metadata-deployable, including the PEM certificate that enables the JWT
+  Bearer flow (`ExtlClntAppGlobalOauthSettings.certificate`, API 60.0+). The
+  ready-to-deploy bundle lives at `scripts/setup/external-client-app/`:
+  1. `sf project deploy start --metadata-dir scripts/setup/external-client-app -o <alias>`
+  2. `sf org assign permset -n Salesforce DevOps_CI -o <alias>` (pre-authorizes the user)
+  3. Retrieve the org-generated consumer key:
+     `sf project retrieve start --metadata "ExtlClntAppGlobalOauthSettings:Salesforce_DevOps_CI_Global" -o <alias> --target-metadata-dir /tmp/eca --unzip`
+     → `<consumerKey>` in the retrieved `.ecaGlblOauth`. Note: unlike connected
+     apps, the consumer key is minted per org — capture it per org into
+     `<ORG>_SF_CLIENT_ID`.
+  4. Verify: `sf org login jwt --client-id <key> --username <user> --jwt-key-file
+     scripts/setup/connected-app/server.key --instance-url https://test.salesforce.com`
+  (Verified end-to-end against a scratch org on 2026-08.)
+- **`sfdx-url`** (fallback / quickest path): store the CLI's auth URL:
   `sf org display -o <alias> --verbose --json` → `result.sfdxAuthUrl` → secret
   `SF_AUTH_URL` on that stage's environment. Refresh it whenever the scratch org
-  is recreated.
+  is recreated. Historical note: the PoC's scratch stages used this because an
+  earlier version of this doc wrongly believed the ECA JWT flow wasn't
+  scriptable — it is (see above).
 
 ### Connected app + JWT certificate (per persistent org)
 

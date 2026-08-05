@@ -10,7 +10,7 @@ pipeline:
   - branch: uat
     org: UAT
     environment: uat
-    authMethod: sfdx-url
+    authMethod: jwt
     testLevel: RunLocalTests
     gates:
       scannerMaxSeverity: 2
