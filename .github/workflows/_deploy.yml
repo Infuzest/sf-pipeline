@@ -17,6 +17,16 @@ on:
         required: false
         default: ""
         type: string
+      mode:
+        description: "delta (default) or full — a full re-deploy repairs an org that has drifted from the branch"
+        required: false
+        default: "delta"
+        type: string
+      include:
+        description: "Extra components to add to the delta, as Type:Member entries (comma or newline separated)"
+        required: false
+        default: ""
+        type: string
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -57,6 +67,14 @@ jobs:
           set -euo pipefail
           ENV="${{ steps.stage.outputs.environment }}"
           LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV" --latest)
+          # A repair run has work to do BY DEFINITION — the whole point is that
+          # the git delta doesn't describe it, so never let the delta veto it.
+          if [ "${{ inputs.mode }}" = "full" ] || [ -n "${{ inputs.include }}" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "Repair deploy requested (mode=${{ inputs.mode }}) — skipping the empty-delta check"
+            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh "" "$ENV" "${{ inputs.mode }}" || true
+            exit 0
+          fi
           if [ -z "$LAST_TAG" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "First deploy to $ENV — full deploy required"
@@ -120,14 +138,27 @@ jobs:
           LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV" --latest)
           echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
           mkdir -p deploy-package
-          if [ -z "$LAST_TAG" ]; then
+          # A full re-deploy is the repair path for an org that has drifted from
+          # the branch: the delta only describes what changed IN GIT, so it can
+          # never carry something the org is missing but git already had.
+          if [ -z "$LAST_TAG" ] || [ "${{ inputs.mode }}" = "full" ]; then
             echo "mode=full" >> "$GITHUB_OUTPUT"
-            echo "First deploy to $ENV — deploying full force-app"
+            if [ -z "$LAST_TAG" ]; then
+              echo "First deploy to $ENV — deploying everything"
+            else
+              echo "Full re-deploy of $ENV requested — deploying everything, no deletions"
+            fi
           else
             echo "mode=delta" >> "$GITHUB_OUTPUT"
             SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
             # shellcheck disable=SC2086
             sf sgd source delta --from "$LAST_TAG" --to "HEAD" $SRC --output-dir deploy-package
+            if [ -n "${{ inputs.include }}" ]; then
+              # Named components join the delta — the escape hatch for when the
+              # git diff cannot express what the org actually needs.
+              node .pipeline/scripts/deploy/merge-manifest.mjs deploy-package/package/package.xml \
+                --include "${{ inputs.include }}"
+            fi
             node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
           fi
 
