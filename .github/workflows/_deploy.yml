@@ -65,7 +65,9 @@ jobs:
             exit 0
           fi
           mkdir -p precheck
-          sf sgd source delta --from "$LAST_TAG" --to HEAD --output-dir precheck
+          SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+          # shellcheck disable=SC2086
+          sf sgd source delta --from "$LAST_TAG" --to HEAD $SRC --output-dir precheck
           CHANGED=$(grep -c "<members>" precheck/package/package.xml 2>/dev/null || true)
           DESTR=$(grep -c "<members>" precheck/destructiveChanges/destructiveChanges.xml 2>/dev/null || true)
           if [ "${CHANGED:-0}" = "0" ] && [ "${DESTR:-0}" = "0" ]; then
@@ -123,7 +125,9 @@ jobs:
             echo "First deploy to $ENV — deploying full force-app"
           else
             echo "mode=delta" >> "$GITHUB_OUTPUT"
-            sf sgd source delta --from "$LAST_TAG" --to "HEAD" --output-dir deploy-package
+            SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+            # shellcheck disable=SC2086
+            sf sgd source delta --from "$LAST_TAG" --to "HEAD" $SRC --output-dir deploy-package
             node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
           fi
 
