@@ -16,6 +16,16 @@ on:
       reason:
         description: "Why this manual deploy is needed (audit log)"
         required: true
+      mode:
+        description: "Full re-deploy repairs an org that has drifted from the branch"
+        required: false
+        default: delta
+        type: choice
+        options: [delta, full]
+      include:
+        description: "Extra components to add to the delta — Type:Member, comma separated (e.g. CustomObject:Bank_Transactions__c)"
+        required: false
+        default: ""
 
 permissions:
   contents: write # deploy tags + orbitops-meta branch
@@ -31,4 +41,6 @@ jobs:
     uses: SalikPOC/sf-pipeline/.github/workflows/_deploy.yml@main
     with:
       reason: ${{ inputs.reason || '' }}
+      mode: ${{ inputs.mode || 'delta' }}
+      include: ${{ inputs.include || '' }}
     secrets: inherit

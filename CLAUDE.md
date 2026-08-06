@@ -192,3 +192,17 @@ Node ESM scripts with `node --test` units · composite action
   rather than hardcoding force-app). Four call sites: _pr-validate delta,
   _deploy precheck, _deploy delta, rollback/preview.sh. Same failure class as
   the coverage-gate bug: a gate that fails on a not-applicable case.
+- 2026-08-06: Repair deploys — the delta model's blind spot. The package is
+  computed from `git diff <last deploy tag>..HEAD`, so it describes what
+  changed IN GIT and can never describe what's missing from the ORG. Any
+  divergence (a merge while the pipeline is down, a deploy cancelled in the
+  concurrency queue, a hand-edited or refreshed org, a partially-applied
+  deploy) leaves the org behind with nothing in the diff to say so, and every
+  later delta deploy fails on the gap — as PROD did with "Entity
+  'Bank_Transactions__c' not found", because the object was in main but the
+  deploy that would have created it had been cancelled while queued. Two levers
+  now: `mode: full` re-deploys every package dir (never deletes), and
+  `include: Type:Member,…` merges named components into the delta via
+  `scripts/deploy/merge-manifest.mjs`. Both bypass the precheck's empty-delta
+  veto — a repair run has work to do by definition — and both still go through
+  the environment approval gate.
