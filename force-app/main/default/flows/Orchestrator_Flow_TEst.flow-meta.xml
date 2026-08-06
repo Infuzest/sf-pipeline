@@ -9,7 +9,7 @@
         <locationX>0</locationX>
         <locationY>0</locationY>
         <defaultConnector>
-            <targetReference>ReadyContentForPublication</targetReference>
+            <targetReference>testtest</targetReference>
         </defaultConnector>
         <defaultConnectorLabel>No (Default)</defaultConnectorLabel>
         <rules>
@@ -427,6 +427,29 @@
             <stepSubtype>ManagedContentRoleInteractiveStep</stepSubtype>
         </stageSteps>
     </orchestratedStages>
+    <orchestratedStages>
+        <name>testtest</name>
+        <label>test</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>ReadyContentForPublication</targetReference>
+        </connector>
+        <exitConditionLogic>and</exitConditionLogic>
+        <stageSteps>
+            <name>sdfsfds</name>
+            <actionType>stepBackground</actionType>
+            <canAssigneeEdit>false</canAssigneeEdit>
+            <debugSimulateStep>false</debugSimulateStep>
+            <entryConditionLogic>and</entryConditionLogic>
+            <exitConditionLogic>and</exitConditionLogic>
+            <label>sdfsfds</label>
+            <requiresAsyncProcessing>false</requiresAsyncProcessing>
+            <runAsUser>false</runAsUser>
+            <shouldLock>false</shouldLock>
+            <stepSubtype>BackgroundStep</stepSubtype>
+        </stageSteps>
+    </orchestratedStages>
     <processMetadataValues>
         <name>BuilderType</name>
         <value>
@@ -449,7 +472,7 @@
             <targetReference>InitiateContentReviewRequest</targetReference>
         </connector>
     </start>
-    <status>Active</status>
+    <status>InvalidDraft</status>
     <variables>
         <description>Required for a Managed Content Authoring Workflow (Beta) orchestration. Is passed into the orchestration.</description>
         <name>MContentSpaceId</name>
