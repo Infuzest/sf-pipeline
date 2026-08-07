@@ -346,7 +346,6 @@
         </rules>
     </decisions>
     <decisions>
-        <description>D</description>
         <name>Use_parent_record_id_or_record_id</name>
         <label>Use parent_record_id Or record_id</label>
         <locationX>0</locationX>
@@ -419,7 +418,6 @@
             <label>Yes</label>
         </rules>
     </decisions>
-    <description>Updated</description>
     <environments>Offline</environments>
     <formulas>
         <description>Calculates a date that&apos;s 30 days after the flow is run to use for the opportunity close date. To use a different number of days for the opportunity close date, change 30 to the number of days in the future you want.</description>
@@ -994,7 +992,7 @@
             <targetReference>Use_parent_record_id_or_record_id</targetReference>
         </connector>
     </start>
-    <status>Draft</status>
+    <status>Active</status>
     <variables>
         <description>Stores the name of the company which is either the specified company name (new lead) or the full contact name (new lead or existing customer).</description>
         <name>contactCompanyName</name>
