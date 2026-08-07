@@ -1,0 +1,52 @@
+{
+  "type": "deploy-preview",
+  "env": "production",
+  "runId": "31177483346",
+  "sha": "8924ba42c99dcec6299f047e8696e8b6b1fda76b",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Bank_Transactions__c.Account__c",
+      "Bank_Transactions__c.Amount__c",
+      "Bank_Transactions__c.Description__c",
+      "Bank_Transactions__c.Sort_Code__c",
+      "Contact.Group__c",
+      "Tickets__c.Contact__c",
+      "Tickets__c.Price__c"
+    ],
+    "CustomObject": [
+      "Bank_Transactions__c",
+      "Contact",
+      "Tickets__c"
+    ],
+    "CustomTab": [
+      "Bank_Transactions__c",
+      "Tickets__c"
+    ],
+    "Flow": [
+      "data_capture_2",
+      "Orchestrator_Flow_TEst",
+      "Ticket_to_contact"
+    ],
+    "Layout": [
+      "Bank_Transactions__c-Bank Transactions Layout",
+      "Contact-Contact %28Marketing%29 Layout",
+      "Contact-Contact %28Sales%29 Layout",
+      "Contact-Contact %28Support%29 Layout",
+      "Contact-Contact Layout",
+      "Tickets__c-Tickets Layout"
+    ],
+    "ListView": [
+      "Bank_Transactions__c.All",
+      "Tickets__c.All"
+    ]
+  },
+  "destructive": {
+    "CustomField": [
+      "BUP_Clinic__c.Notes__c"
+    ]
+  },
+  "componentCount": 23,
+  "destructiveCount": 1,
+  "timestamp": "2026-08-07T12:17:13.628Z"
+}
