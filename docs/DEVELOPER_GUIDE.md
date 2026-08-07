@@ -12,9 +12,10 @@ GitHub is the source of truth, in SFDX source format (`force-app/`). Each
 pipeline stage is a long-lived branch mapped to an org in
 [.orbitops/pipeline.yml](../.orbitops/pipeline.yml) — order in that file is
 promotion order (currently `integration` → `uat` → `main`). Every promotion is
-a PR; merging it is the promotion. A merge to a stage branch triggers a
-delta deploy (sfdx-git-delta) to that stage's org, gated by the stage's GitHub
-Environment (required reviewers on uat/production).
+a PR. A release candidate is built from that PR and deployed to the destination
+org first; only a successful real deployment merges the PR. Each stage branch
+therefore represents what is already live in its mapped org. The deployment is
+gated by the stage's GitHub Environment (required reviewers on uat/production).
 
 ## Day-to-day flow
 
@@ -34,9 +35,19 @@ git push -u origin feature/PROJ-123-discount-field
 gh pr create --base integration --title "Add discount field (PROJ-123)"
 ```
 
-Checks run automatically (see below). When they're green, **merge the PR —
-that IS the promotion**: the deploy workflow computes the delta since the
-stage's last release tag and deploys it to the stage org.
+Checks run automatically (see below). When they are green, **request the
+release candidate — do not merge the PR yourself**:
+
+```bash
+gh workflow run release-candidate.yml --ref main \
+  -f pr_number=<number> \
+  -f target_branch=<stage-branch>
+```
+
+The release workflow queues candidates for that stage, rebuilds this PR from
+the current stage revision, validates and deploys it to Salesforce, then merges
+the PR only after the real deployment succeeds. A failed deployment leaves the
+PR and stage branch unchanged.
 
 Promoting onward works the same way: open a PR from the lower stage branch to
 the next one (`integration` → `uat`, `uat` → `main`). Releases to uat and
@@ -67,13 +78,19 @@ Commit *bodies* are not scanned — only footers, branch names, and PR titles.
 | Validate against target org | Check-only deploy (`sf project deploy validate`) against the stage org; errors posted as a sticky comment | Yes |
 | Coverage gate | Apex coverage from the validation vs the stage's `minCoverage`. Not applicable (passes) when the delta contains no Apex | Yes |
 
-A successful validation with tests produces a quick-deploy ID — the deploy on
-merge reuses it when the merged tree matches, so green PRs release fast.
+A successful PR validation is a useful practice run. The release candidate is
+validated again from the latest stage state; when that fresh validation permits
+it, its quick-deploy ID completes the actual deployment without a second test
+run.
 
 ## Useful operations without the UI
 
-- **Manual deploy**: Actions → "Salesforce DevOps Deploy" → Run workflow → pick the
-  stage branch, give a reason (audit-logged). The environment gate still applies.
+- **Release a promotion**: Actions → "Release candidate" → Run workflow → enter
+  the open promotion number and its target stage. The workflow merges only
+  after Salesforce succeeds; the environment gate still applies.
+- **Repair a drifted org**: Actions → "Salesforce DevOps Deploy" → Run workflow →
+  pick the stage branch and give a reason (audit-logged). This is not the
+  normal release path; it brings the org back to the branch's recorded state.
 - **Rollback**: Actions → "Salesforce DevOps Rollback" → env + target release sequence +
   mode (`preview` first — it validates and publishes a safety report; then
   `execute`). Rollback is metadata-only, forward-revert (no force-push).
@@ -94,9 +111,9 @@ All pipeline behaviour lives on **main** — change it once, it applies everywhe
   review). Stage order in the file is promotion order. Adding a stage also
   needs its branch, GitHub Environment, and org secrets — the UI's Settings →
   Pipeline stages automates most of that, or see SETUP.md.
-- **Workflow logic**: `.github/workflows/_pr-validate.yml` and `_deploy.yml`
-  are reusable workflows (the single source of truth) invoked from every stage
-  branch via thin callers (`pr-validate.yml`, `deploy.yml`) that pin `@main`.
+- **Workflow logic**: `.github/workflows/_pr-validate.yml`, `_deploy.yml`, and
+  `_release-candidate.yml` are reusable workflows (the single source of
+  truth) invoked from thin callers that pin `@main`.
   **Never edit the callers on stage branches** — change the `_*.yml` files on
   main. Scripts live in `scripts/**` (Node ESM, unit-tested: `npm test`); jobs
   check them out from main at run time, so script fixes also land once.

@@ -44,11 +44,12 @@ PR opened (feature/* → integration, or integration → uat, …)
        changed-components package → sf project deploy validate (check-only
        deploy: Salesforce compiles + runs tests in the org, commits nothing)
        → code scan, coverage gate, work-item check → sticky PR comment
-PR merged ("Promote" in the UI, or GitHub's merge button)
-  └─ deploy.yml (thin caller) → _deploy.yml@main on a fresh runner (gated by the GitHub Environment):
-       quick-deploy the validated package if still eligible (no re-run of
-       tests), else full delta deploy → tag deploy/<env>/<seq> → manifest
-       committed to the orbitops-meta branch → GitHub Deployment recorded
+Release requested ("Deploy to …" in the UI, or release-candidate workflow dispatch)
+  └─ release-candidate.yml (thin caller) → _release-candidate.yml@main:
+       queue per target stage → rebuild current PR candidate → GitHub
+       Environment approval → validate + deploy to Salesforce → merge only
+       on success → tag deploy/<env>/<seq> → manifest committed to
+       orbitops-meta → GitHub Deployment recorded
 ```
 
 Key properties:
@@ -56,11 +57,14 @@ Key properties:
 - **Delta, not full deploys** — `sfdx-git-delta` diffs the two branches and
   builds a `package.xml` of only what changed (plus `destructiveChanges.xml`
   for deletions).
-- **Validate-first** — the check-only deploy happens against the real target
-  org at PR time; merge without green checks is impossible (branch protection).
-- **Quick deploy** — Salesforce lets a validated deployment be applied within
-  10 days without re-running tests; the pipeline stores the validation id and
-  uses it on merge, falling back to a full deploy if anything drifted.
+- **Deploy-before-merge** — the check-only deploy happens against the real
+  target org at PR time. When released, a serialized workflow rebuilds that
+  PR against the latest stage, validates it again, and deploys it before it
+  merges. A stage branch therefore records what is already live, not a release
+  that only passed a practice run.
+- **Quick deploy where safe** — Salesforce lets a freshly validated candidate
+  be applied without re-running tests. The release workflow uses that actual
+  deployment where eligible, otherwise it performs a normal deployment.
 - **Gates** — GitHub Environments hold the deploy job until required reviewers
   approve (UAT/production); in-workflow gates enforce `minCoverage` and
   `scannerMaxSeverity` from [.orbitops/pipeline.yml](.orbitops/pipeline.yml).
@@ -72,8 +76,10 @@ Key properties:
 
 Validation and deploy logic are **reusable workflows that live only on main**:
 
-- [`_pr-validate.yml`](.github/workflows/_pr-validate.yml) and
-  [`_deploy.yml`](.github/workflows/_deploy.yml) (`workflow_call`) hold every job.
+- [`_pr-validate.yml`](.github/workflows/_pr-validate.yml),
+  [`_deploy.yml`](.github/workflows/_deploy.yml), and
+  [`_release-candidate.yml`](.github/workflows/_release-candidate.yml)
+  (`workflow_call`) hold every job.
 - Each stage branch carries only thin callers (`pr-validate.yml`, `deploy.yml`)
   that pin `...@main` — installed once per branch, never edited again.
 - Jobs check out two trees: the workspace (the branch being validated or
@@ -95,7 +101,8 @@ a config PR (the UI's Settings → Pipeline stages automates it).
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | `pr-validate.yml` → `_pr-validate.yml@main` | PRs (non-stage bases skipped) | Delta preview, work-item check, code scan, check-only deploy against the target org, coverage gate (auto-passes when the delta has no Apex) |
-| `deploy.yml` → `_deploy.yml@main` | Push to a stage branch (merge) | Quick-deploy or delta deploy, tag + manifest + Deployment, back-promotion PRs after the last stage, optional failure webhook |
+| `release-candidate.yml` → `_release-candidate.yml@main` | UI/manual dispatch for an open promotion | Rebuilds the current PR candidate, queues releases per target stage, validates and deploys the candidate, then merges it only on success; records tag + manifest + Deployment and back-promotes after the last stage |
+| `deploy.yml` → `_deploy.yml@main` | Explicit repair dispatch | Full or targeted repair of an org that drifted from its stage branch |
 | `rollback.yml` | Manual / UI dispatch | Reverse delta between deploy tags; preview mode publishes a safety report, execute mode validates first then applies + revert PR |
 | `retrieve.yml` | UI dispatch | "Pull my changes": retrieve a builder's edits from any registered/connected org into their work branch |
 | `full-scan.yml` | Schedule + manual | Whole-repo Code Analyzer sweep → SARIF + burn-down issue |

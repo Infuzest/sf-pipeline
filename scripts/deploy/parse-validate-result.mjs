@@ -8,17 +8,73 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { setOutputs } from "../lib/output.mjs";
 
+const asArray = (value) => (Array.isArray(value) ? value : value ? [value] : []);
+
+function decodeComponentName(value) {
+  const name = String(value ?? "");
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+}
+
+function normalizedFailure(failure) {
+  return {
+    fullName: decodeComponentName(failure.fullName ?? failure.filePath ?? failure.name),
+    type: String(failure.componentType ?? failure.type ?? ""),
+    problem: String(failure.problem ?? failure.error ?? failure.errorMessage ?? failure.message ?? ""),
+    line: failure.lineNumber ?? failure.line ?? "",
+    column: failure.columnNumber ?? failure.column ?? "",
+  };
+}
+
+/**
+ * Salesforce CLI v2 has returned component failures in several different
+ * places over time. Prefer structured Metadata API details, then the CLI's
+ * files list, and finally recover the human-readable "Error in …" lines from
+ * the top-level message. A citizen must never see "0 errors" when Salesforce
+ * has supplied the real reason elsewhere in the same response.
+ */
+function extractFailures(json, result) {
+  const fromDetails = asArray(result.details?.componentFailures).map(normalizedFailure);
+  if (fromDetails.length) return fromDetails;
+
+  const fromFiles = asArray(result.files)
+    .filter(
+      (file) =>
+        /fail|error/i.test(String(file.state ?? "")) ||
+        file.error ||
+        file.problem ||
+        file.errorMessage
+    )
+    .map(normalizedFailure);
+  if (fromFiles.length) return fromFiles;
+
+  const parsed = [];
+  for (const line of String(json.message ?? "").split(/\r?\n/)) {
+    const match = line.match(/^Error in (.+?) - (.+)$/);
+    if (!match) continue;
+    let problem = match[2].trim();
+    const location = problem.match(/\s*\((\d+):(\d+)\)\s*$/);
+    if (location) problem = problem.slice(0, location.index).trim();
+    parsed.push({
+      fullName: decodeComponentName(match[1].trim()),
+      type: "",
+      problem,
+      line: location?.[1] ?? "",
+      column: location?.[2] ?? "",
+    });
+  }
+  return parsed;
+}
+
 export function parseValidation(json) {
   const result = json.result ?? {};
   const succeeded = json.status === 0 && result.success === true;
   const test = result.details?.runTestResult ?? {};
 
-  const failures = (result.details?.componentFailures ?? []).map((f) => ({
-    fullName: f.fullName,
-    type: f.componentType,
-    problem: f.problem,
-    line: f.lineNumber ?? "",
-  }));
+  const failures = extractFailures(json, result);
 
   const coverage = (test.codeCoverage ?? []).map((c) => {
     const total = Number(c.numLocations ?? 0);
@@ -53,9 +109,21 @@ export function parseValidation(json) {
 export function renderErrorsMarkdown(parsed) {
   const lines = ["## ❌ Validation failed", ""];
   if (parsed.failures.length) {
-    lines.push("| Component | Type | Problem | Line |", "|---|---|---|---|");
+    lines.push(
+      `${parsed.failures.length} Salesforce component${parsed.failures.length === 1 ? " needs" : "s need"} attention.`,
+      "",
+      "| API Name | Type | Line | Column | Error Message |",
+      "|---|---|---:|---:|---|"
+    );
+    const cell = (value) =>
+      String(value ?? "")
+        .replaceAll("\\", "\\\\")
+        .replaceAll("|", "\\|")
+        .replace(/\r?\n/g, "<br>");
     for (const f of parsed.failures) {
-      lines.push(`| ${f.fullName} | ${f.type} | ${(f.problem ?? "").replaceAll("|", "\\|")} | ${f.line} |`);
+      lines.push(
+        `| ${cell(f.fullName)} | ${cell(f.type)} | ${cell(f.line)} | ${cell(f.column)} | ${cell(f.problem)} |`
+      );
     }
   }
   if (parsed.testFailures.length) {
@@ -101,10 +169,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   if (!parsed.succeeded && flag("errors")) writeFileSync(flag("errors"), renderErrorsMarkdown(parsed));
 
-  console.log(
-    parsed.succeeded
-      ? `✔ Validation succeeded (id ${parsed.validationId}, ${parsed.testsRan} tests)`
-      : `✖ Validation failed: ${parsed.failures.length} component error(s), ${parsed.testsFailed} test failure(s)`
-  );
+  if (parsed.succeeded) {
+    console.log(`✔ Validation succeeded (id ${parsed.validationId}, ${parsed.testsRan} tests)`);
+  } else {
+    console.log(`✖ Validation failed: ${parsed.failures.length} component error(s), ${parsed.testsFailed} test failure(s)`);
+    for (const failure of parsed.failures) {
+      const location =
+        failure.line !== "" || failure.column !== ""
+          ? ` (${failure.line || 0}:${failure.column || 0})`
+          : "";
+      console.log(`  - ${failure.fullName}${failure.type ? ` [${failure.type}]` : ""}${location}: ${failure.problem}`);
+    }
+    for (const failure of parsed.testFailures) {
+      console.log(`  - ${failure.name}.${failure.method}: ${failure.message}`);
+    }
+    if (!parsed.failures.length && !parsed.testFailures.length && parsed.cliMessage) {
+      console.log(`Salesforce CLI reported:\n${parsed.cliMessage}`);
+    }
+  }
   process.exit(parsed.succeeded ? 0 : 1);
 }
