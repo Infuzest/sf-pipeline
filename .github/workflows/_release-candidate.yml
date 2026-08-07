@@ -72,9 +72,17 @@ jobs:
         run: |
           git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
           git checkout --detach "$BASE_SHA"
+          # --no-commit still needs an identity when Git creates the candidate
+          # merge state on a fresh Actions runner.
+          git config user.name "orbitops-bot"
+          git config user.email "orbitops-bot@users.noreply.github.com"
           if ! git merge --no-commit --no-ff "$HEAD_SHA"; then
-            git merge --abort || true
-            echo "This change now conflicts with the latest target stage. Resolve the conflict, then try again."
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "This change now conflicts with the latest target stage. Resolve the conflict, then try again."
+            else
+              echo "The release candidate could not be prepared. Nothing was deployed — check this run for details."
+            fi
+            if git rev-parse -q --verify MERGE_HEAD >/dev/null; then git merge --abort; fi
             exit 1
           fi
           echo "tree=$(git write-tree)" >> "$GITHUB_OUTPUT"
