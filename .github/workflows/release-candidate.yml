@@ -4,7 +4,7 @@
 # caller deploys the exact PR candidate first; the reusable workflow merges the
 # PR only after Salesforce confirms the real deployment succeeded.
 name: Release candidate
-run-name: Release #${{ inputs.pr_number }} to ${{ inputs.target_branch }}
+run-name: "Release #${{ inputs.pr_number }} to ${{ inputs.target_branch }}"
 
 on:
   workflow_dispatch:
