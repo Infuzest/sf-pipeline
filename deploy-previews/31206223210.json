@@ -1,0 +1,19 @@
+{
+  "type": "deploy-preview",
+  "env": "production",
+  "runId": "31206223210",
+  "sha": "e056c6c43a1543f4b1a24a8301ab8f952efd6d37",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Account.mem__c"
+    ],
+    "Layout": [
+      "Account-Account %28Marketing%29 Layout"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-07T18:20:28.877Z"
+}
