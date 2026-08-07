@@ -1,0 +1,25 @@
+{
+  "type": "deploy-preview",
+  "env": "production",
+  "runId": "31204620148",
+  "sha": "9f53a27ef8b618eb781cc8acfc1ba7431333ca47",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Account.mem__c"
+    ],
+    "Flow": [
+      "data_capture_2"
+    ],
+    "Layout": [
+      "Account-Account %28Marketing%29 Layout",
+      "Account-Account %28Sales%29 Layout",
+      "Account-Account %28Support%29 Layout",
+      "Account-Account Layout"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 6,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-07T18:06:24.961Z"
+}
