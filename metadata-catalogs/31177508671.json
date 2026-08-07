@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "sourceOrg": "source-org",
+  "generatedAt": "2026-08-07T12:17:51.499Z",
+  "categories": [
+    {
+      "key": "fields",
+      "groups": [
+        {
+          "name": "Bank_Transactions__c",
+          "items": [
+            {
+              "type": "CustomField",
+              "member": "Bank_Transactions__c.Account__c",
+              "label": "Account__c"
+            },
+            {
+              "type": "CustomField",
+              "member": "Bank_Transactions__c.Amount__c",
+              "label": "Amount__c"
+            },
+            {
+              "type": "CustomField",
+              "member": "Bank_Transactions__c.Description__c",
+              "label": "Description__c"
+            },
+            {
+              "type": "CustomField",
+              "member": "Bank_Transactions__c.Sort_Code__c",
+              "label": "Sort_Code__c"
+            }
+          ]
+        },
+        {
+          "name": "BUP_Clinic__c",
+          "items": [
+            {
+              "type": "CustomField",
+              "member": "BUP_Clinic__c.BUP_Account__c",
+              "label": "BUP_Account__c"
+            }
+          ]
+        },
+        {
+          "name": "Contact",
+          "items": [
+            {
+              "type": "CustomField",
+              "member": "Contact.Group__c",
+              "label": "Group__c"
+            }
+          ]
+        },
+        {
+          "name": "Tickets__c",
+          "items": [
+            {
+              "type": "CustomField",
+              "member": "Tickets__c.Contact__c",
+              "label": "Contact__c"
+            },
+            {
+              "type": "CustomField",
+              "member": "Tickets__c.Price__c",
+              "label": "Price__c"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "apex",
+      "groups": []
+    },
+    {
+      "key": "lwc",
+      "groups": []
+    },
+    {
+      "key": "aura",
+      "groups": []
+    },
+    {
+      "key": "flows",
+      "groups": [
+        {
+          "name": "components",
+          "items": [
+            {
+              "type": "Flow",
+              "member": "data_capture_2",
+              "label": "data_capture_2"
+            },
+            {
+              "type": "Flow",
+              "member": "Orchestrator_Flow_TEst",
+              "label": "Orchestrator_Flow_TEst"
+            },
+            {
+              "type": "Flow",
+              "member": "Ticket_to_contact",
+              "label": "Ticket_to_contact"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "validationRules",
+      "groups": []
+    }
+  ]
+}
