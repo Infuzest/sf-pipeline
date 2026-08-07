@@ -19,7 +19,8 @@ GitHub is the source of truth (SFDX source format, `force-app/`). Each **stage**
 is a long-lived branch mapped to an org, and the stage order lives in
 [`.orbitops/pipeline.yml`](../.orbitops/pipeline.yml) — that file's order *is*
 promotion order (`integration` → `uat` → `main`/production today). **A promotion
-is a PR into the next stage branch; merging it deploys to that stage's org**,
+is a PR into the next stage branch. Its release candidate is deployed to that
+stage's org first, then the PR merges only after Salesforce succeeds**. This is
 gated by the stage's GitHub Environment (required reviewers on the later
 stages). Nothing is ever deployed by hand.
 
@@ -32,7 +33,7 @@ stages). Nothing is ever deployed by hand.
 | **3. Bring the work in** | *Pull my changes* — runs the retrieve workflow, shows edits in plain language, untick what isn't yours | `git commit` (you already have the files locally) |
 | **4. Submit for review** | *Submit for promotion* — opens the PR, starts the checks | `git push` + `gh pr create --base integration` |
 | **5. Checks** | Friendly check panel; failures explain themselves | The same status checks on the PR (see table below) |
-| **6. Promote** | *Promote to <stage>* button when green | Merge the PR — the merge **is** the promotion |
+| **6. Release** | *Deploy to <stage>* button when green | Dispatch the release-candidate workflow for the PR — it merges after the actual deploy succeeds |
 | **7. Approve** (later stages) | Approval card on the pipeline board | Actions → the queued run → *Review deployments* |
 | **8. Onward** | Promote again to the next stage | Open a PR from the lower stage branch into the next |
 | **9. Verify** | *Release history* / *My changes* badges | `git tag -l 'deploy/*'`, Deployments API, `orbitops-meta` manifests |
@@ -139,8 +140,10 @@ gh pr create --base integration --title "Add discount field (PROJ-123)"
 | **Validate against target org** | Check-only deploy against the real stage org (compiles, runs tests, deploys nothing) | Yes |
 | **Coverage gate** | Apex coverage vs the stage's threshold; not-applicable when the delta has no Apex | Yes |
 
-Check runs appear as `checks / <name>` on the PR. A green validation with tests
-mints a **quick-deploy ID** the merge can reuse (no test re-run).
+Check runs appear as `checks / <name>` on the PR. A green validation is a
+practice run only. At release time the pipeline rebuilds the candidate against
+the latest target stage and validates it again; where Salesforce permits it,
+that fresh validation supplies the quick-deploy ID for the real deployment.
 
 **When a check fails —**
 
@@ -156,19 +159,25 @@ mints a **quick-deploy ID** the merge can reuse (no test re-run).
 
 ## Phase 6 — Promote to the first stage
 
-**UI**: when everything is green, **Promote to Integration**. A result banner
+**UI**: when everything is green, **Deploy to Integration**. A result banner
 appears at the top of the page; the board shows *Releasing…*.
 
-**Git**: merge the PR (merge commit — it preserves `Work-Items:` footers):
+**Git**: request a release candidate. Do not merge the PR yourself — the
+workflow records the PR only after the actual Salesforce deployment succeeds:
 
 ```bash
-gh pr merge <number> --merge --delete-branch
+gh workflow run release-candidate.yml --ref main \
+  -f pr_number=<number> \
+  -f target_branch=integration
 ```
 
-The merge triggers the deploy: delta (or quick-deploy) to the stage org, then
-tag `deploy/integration/<seq>` + a JSON manifest on `orbitops-meta` + a GitHub
-Deployment record. Merges with an empty deployable delta (docs-only, pipeline
-config) skip the deploy cleanly.
+The release workflow serializes candidates for each destination stage, rebuilds
+the PR from that stage's latest revision, then validates and deploys the exact
+candidate. Only after Salesforce confirms success does it merge the PR, mint
+`deploy/integration/<seq>`, write the JSON manifest on `orbitops-meta`, and
+record a GitHub Deployment. A failed deployment leaves both the PR and stage
+branch unchanged. Merges with an empty deployable delta (docs-only, pipeline
+config) are recorded without a Salesforce deployment.
 
 ## Phase 7 — Promote onward, with approvals
 
@@ -185,7 +194,7 @@ optional audit note.
 
 ```bash
 gh pr create --base uat --head integration --title "Promote to UAT (PROJ-123)"
-# after checks: gh pr merge --merge
+# after checks: dispatch release-candidate.yml with pr_number + target_branch=uat
 ```
 
 The deploy then **waits at the GitHub Environment gate**: Actions → the queued
@@ -250,7 +259,7 @@ destructive changes → type the stage name to confirm → execute
 | Deploy queued forever | Environment gate awaiting review, or another run holds the per-stage concurrency lock | Approve/reject the gate; cancel stale waiting runs |
 | "Overlaps with another change" | Real merge conflict with another promotion | Developer resolves on the feature branch |
 | Promote button disabled | A check failing/running, or conflict | The reason is printed under the button; see Phase 5 |
-| Nothing deployed after merge | Empty deployable delta (docs/config only) | Expected — precheck skips the gated deploy |
+| No Salesforce deployment after the release completes | Empty deployable delta (docs/config only) | Expected — the change is recorded without touching Salesforce |
 
 ## Where to go next
 

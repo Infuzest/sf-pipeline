@@ -7,10 +7,10 @@
 name: Salesforce DevOps Deploy
 
 on:
-  push:
-    # Stage topology lives ONLY in .orbitops/pipeline.yml — the reusable
-    # workflow skips pushes to branches that aren't pipeline stages.
-    branches-ignore: ["feature/**", "orbitops-meta", "orbitops/**"]
+  # Normal releases run through release-candidate.yml: Salesforce deploys the
+  # PR candidate before it is merged, so a stage branch only records releases
+  # that are already live. This workflow remains the explicit repair path for
+  # a drifted org.
   workflow_dispatch:
     inputs:
       reason:

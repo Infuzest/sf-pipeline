@@ -23,21 +23,25 @@ GitHub is the source of truth for org metadata (SFDX source format,
 1. **Branch-per-environment promotion.** Long-lived stage branches map to orgs
    via `.orbitops/pipeline.yml` — the ONLY place topology lives. Order in that
    file = promotion order (currently integration → uat → main/production).
-   Every promotion is a PR; merging it is the promotion; a merge to a stage
-   branch triggers a delta deploy to that stage's org.
+   Every promotion is a PR. A release candidate is built from that PR, then
+   deployed to the stage org; only a successful real deployment merges the PR.
+   Therefore a stage branch records what is already live in its org — never a
+   merely validated or failed release.
 2. **Reusable workflows: pipeline logic is single-source on `main`.**
-   `.github/workflows/_pr-validate.yml` and `_deploy.yml` (`workflow_call`)
-   hold ALL jobs. Stage branches carry only thin callers
-   (`pr-validate.yml`, `deploy.yml`) that pin `...@main` — installed once,
+   `.github/workflows/_pr-validate.yml`, `_deploy.yml`, and
+   `_release-candidate.yml` (`workflow_call`) hold ALL jobs. Stage branches
+   carry only thin callers (`pr-validate.yml`, `deploy.yml`) that pin
+   `...@main` — installed once,
    never edited again. Jobs dual-checkout: workspace = the branch under
    validation/deploy; `.pipeline/` = scripts + config + sf-auth **from main**.
    ⇒ To change pipeline behaviour, edit `_*.yml` and `scripts/**` on main
    ONLY. Never fatten the callers; never edit workflows on stage branches.
 3. **Thin YAML, fat scripts.** Workflow logic lives in `scripts/**` (Node ESM,
    unit-tested with `node --test`; run `npm test`). Workflows call scripts.
-4. **Delta deploys** via sfdx-git-delta between deploy tags; PR validation is a
-   check-only deploy against the real target org; eligible merges quick-deploy
-   the stored validation (no test re-run).
+4. **Candidate deploys** use an exact, freshly-built PR merge tree. PR
+   validation is a practice run; the serialized release workflow validates the
+   current candidate again, deploys it for real, and then merges that exact
+   tree. It uses quick-deploy when Salesforce provides a valid ID.
 5. **History is append-only.** Every deploy mints tag `deploy/<env>/<seq>` + a
    JSON manifest under `deployments/<env>/` on the `orbitops-meta` branch, plus
    a GitHub Deployment. The UI renders everything from these. Never force-push,

@@ -206,3 +206,24 @@ Node ESM scripts with `node --test` units · composite action
   `scripts/deploy/merge-manifest.mjs`. Both bypass the precheck's empty-delta
   veto — a repair run has work to do by definition — and both still go through
   the environment approval gate.
+- 2026-08-07: Validation errors are an app contract, not a console detail.
+  Salesforce CLI v2 returned five real failures under `result.files` (four
+  Account layouts referencing the unavailable `FeedItem.RypplePost` action and
+  a `DataCaptureFlow` unsupported by the target org), while
+  `details.componentFailures` was empty. The parser therefore claimed “0
+  component errors” and the citizen UI had no rows to render.
+  `parse-validate-result.mjs` now normalizes the Metadata API, CLI files, and
+  message-only shapes; preserves type/line/column; decodes encoded component
+  names; writes a five-column sticky-comment table; and prints every failure in
+  the job log. Reusable workflow callers still require no project-repo update.
+- 2026-08-07: Stage branches are now an assertion of deployed state, not an
+  optimistic release queue. `release-candidate.yml` serializes every target
+  stage (sharing the manual-repair concurrency group), builds the exact PR
+  merge tree from the latest stage revision, revalidates it after the GitHub
+  Environment approval, then performs the real Salesforce deployment. The PR
+  merges only if that succeeds and its resulting branch tree exactly matches
+  the deployed candidate; failures leave the PR and stage branch unchanged.
+  `deploy.yml` is now repair-only, preventing a second deploy after the
+  post-success merge. The UI dispatches the candidate workflow, exposes its
+  approval/progress alongside repair runs, and reports its Salesforce errors
+  back on the original change.

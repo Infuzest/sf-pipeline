@@ -1,0 +1,41 @@
+# Salesforce DevOps release candidate — THIN CALLER. Do not add logic here.
+#
+# A stage branch records what is already live in its Salesforce org. This
+# caller deploys the exact PR candidate first; the reusable workflow merges the
+# PR only after Salesforce confirms the real deployment succeeded.
+name: Release candidate
+run-name: Release #${{ inputs.pr_number }} to ${{ inputs.target_branch }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Open promotion to release"
+        required: true
+        type: string
+      target_branch:
+        description: "Stage branch that represents the destination org"
+        required: true
+        type: string
+
+permissions:
+  contents: write # merge after success, deploy tag + orbitops-meta history
+  deployments: write
+  pull-requests: write # merge + sticky Salesforce result comment + back-promotion PRs
+
+# A target org cannot safely receive overlapping candidate deployments. Keeping
+# the whole release (including its approval) in this queue means the next PR is
+# rebuilt and checked against the branch/org state left by the prior release.
+concurrency:
+  # Share the repair workflow's group: no repair and candidate release may
+  # ever touch the same Salesforce org at the same time.
+  group: deploy-${{ inputs.target_branch }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    uses: SalikPOC/sf-pipeline/.github/workflows/_release-candidate.yml@main
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      target_branch: ${{ inputs.target_branch }}
+    secrets: inherit

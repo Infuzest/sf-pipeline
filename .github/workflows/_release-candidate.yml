@@ -1,0 +1,387 @@
+# Salesforce DevOps release candidate — REUSABLE workflow (single source of truth).
+#
+# A target stage branch is a record of what has successfully reached its org.
+# For that reason this workflow deliberately does the potentially fallible
+# Salesforce deployment BEFORE it merges the promotion PR. The workflow-level
+# concurrency in release-candidate.yml serializes candidates for each target
+# stage, while this reusable workflow supplies the one shared implementation.
+name: Salesforce DevOps release candidate logic
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: string
+      target_branch:
+        required: true
+        type: string
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  prepare:
+    name: Prepare exact release candidate
+    runs-on: ubuntu-latest
+    outputs:
+      base_sha: ${{ steps.pr.outputs.base_sha }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      head_ref: ${{ steps.pr.outputs.head_ref }}
+      candidate_tree: ${{ steps.candidate.outputs.tree }}
+      org: ${{ steps.stage.outputs.org }}
+      environment: ${{ steps.stage.outputs.environment }}
+      auth_method: ${{ steps.stage.outputs.auth_method }}
+      test_level: ${{ steps.stage.outputs.test_level }}
+      is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { fetch-depth: 0, fetch-tags: true }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - id: stage
+        working-directory: .pipeline
+        run: node scripts/context/resolve-stage.mjs "${{ inputs.target_branch }}"
+      - name: Confirm the open promotion still targets this stage
+        id: pr
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > pr.json
+          # shellcheck disable=SC2016 # JavaScript template interpolation is intentional.
+          node -e '
+            const fs = require("fs");
+            const pr = JSON.parse(fs.readFileSync("pr.json", "utf8"));
+            const target = process.env.TARGET_BRANCH;
+            if (pr.state !== "open") throw new Error("This change is no longer open.");
+            if (pr.base.ref !== target) throw new Error(`This change no longer targets ${target}.`);
+            if (!pr.head.sha || !pr.base.sha) throw new Error("GitHub did not return the change revisions.");
+            console.log(`base_sha=${pr.base.sha}`);
+            console.log(`head_sha=${pr.head.sha}`);
+            console.log(`head_ref=${pr.head.ref}`);
+          ' >> "$GITHUB_OUTPUT"
+      - name: Build the candidate locally and detect conflicts
+        id: candidate
+        env:
+          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+          git checkout --detach "$BASE_SHA"
+          if ! git merge --no-commit --no-ff "$HEAD_SHA"; then
+            git merge --abort || true
+            echo "This change now conflicts with the latest target stage. Resolve the conflict, then try again."
+            exit 1
+          fi
+          echo "tree=$(git write-tree)" >> "$GITHUB_OUTPUT"
+          git merge --abort
+
+  deploy-and-record:
+    name: Deploy candidate to ${{ needs.prepare.outputs.org }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    # GitHub Environment reviewers approve the actual candidate deployment.
+    # This is deliberately before the merge; approval never changes a branch.
+    environment: ${{ needs.prepare.outputs.environment }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.prepare.outputs.base_sha }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - name: Confirm approval did not make the candidate stale
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          BASE_SHA: ${{ needs.prepare.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.prepare.outputs.head_sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > pr-current.json
+          node -e '
+            const fs = require("fs");
+            const pr = JSON.parse(fs.readFileSync("pr-current.json", "utf8"));
+            const expected = { base: process.env.BASE_SHA, head: process.env.HEAD_SHA, target: process.env.TARGET_BRANCH };
+            if (pr.state !== "open" || pr.base.ref !== expected.target || pr.base.sha !== expected.base || pr.head.sha !== expected.head) {
+              throw new Error("The change or destination changed while it was waiting for approval. Nothing was deployed; start the release again.");
+            }
+          '
+      - name: Rebuild the approved candidate
+        id: candidate
+        env:
+          HEAD_SHA: ${{ needs.prepare.outputs.head_sha }}
+          EXPECTED_TREE: ${{ needs.prepare.outputs.candidate_tree }}
+        run: |
+          git fetch --no-tags origin "$HEAD_SHA"
+          git config user.name "orbitops-bot"
+          git config user.email "orbitops-bot@users.noreply.github.com"
+          git merge --no-ff --no-edit "$HEAD_SHA"
+          CANDIDATE_SHA=$(git rev-parse HEAD)
+          # shellcheck disable=SC1083 # Git revision tree syntax is intentional.
+          CANDIDATE_TREE=$(git rev-parse HEAD^{tree})
+          if [ "$CANDIDATE_TREE" != "$EXPECTED_TREE" ]; then
+            echo "The candidate changed while it was being prepared. Nothing was deployed; start the release again."
+            exit 1
+          fi
+          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+          echo "tree=$CANDIDATE_TREE" >> "$GITHUB_OUTPUT"
+      - uses: ./.pipeline/.github/actions/sf-auth
+        with: { auth-method: none } # install CLI + sfdx-git-delta before computing the package
+      - name: Build the exact deployment package
+        id: delta
+        env:
+          BASE_SHA: ${{ needs.prepare.outputs.base_sha }}
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          CANDIDATE_TREE: ${{ steps.candidate.outputs.tree }}
+        run: |
+          mkdir -p deploy-package
+          SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+          # shellcheck disable=SC2086
+          sf sgd source delta --from "$BASE_SHA" --to "$CANDIDATE_SHA" $SRC --output-dir deploy-package
+          CHANGED=$(grep -c "<members>" deploy-package/package/package.xml 2>/dev/null || true)
+          DESTRUCTIVE=$(grep -c "<members>" deploy-package/destructiveChanges/destructiveChanges.xml 2>/dev/null || true)
+          if [ "${CHANGED:-0}" = "0" ] && [ "${DESTRUCTIVE:-0}" = "0" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No Salesforce metadata changed — this candidate can be recorded without a Salesforce deployment."
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "Deploying ${CHANGED:-0} changed and ${DESTRUCTIVE:-0} removed component group(s)."
+          fi
+          # The preview is associated with this release run, not the main
+          # workflow commit from which it was dispatched.
+          export GITHUB_SHA="$CANDIDATE_SHA"
+          SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh deploy-package "${{ needs.prepare.outputs.environment }}" delta || true
+      - uses: ./.pipeline/.github/actions/sf-auth
+        if: steps.delta.outputs.has_changes == 'true'
+        with:
+          auth-method: ${{ needs.prepare.outputs.auth_method }}
+          client-id: ${{ secrets.SF_CLIENT_ID }}
+          username: ${{ secrets.SF_USERNAME }}
+          jwt-key: ${{ secrets.SF_JWT_KEY }}
+          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+          auth-url: ${{ secrets.SF_AUTH_URL }}
+          alias: target-org
+      - name: Validate the exact candidate against Salesforce
+        id: validation
+        if: steps.delta.outputs.has_changes == 'true'
+        env:
+          TEST_LEVEL_INPUT: ${{ needs.prepare.outputs.test_level }}
+        run: |
+          TEST_LEVEL="$TEST_LEVEL_INPUT"
+          HAS_APEX=$(grep -l "ApexClass\\|ApexTrigger" deploy-package/package/package.xml 2>/dev/null || true)
+          if [ "$TEST_LEVEL" = "Conditional" ]; then
+            if [ -n "$HAS_APEX" ]; then TEST_LEVEL=RunLocalTests; else TEST_LEVEL=NoTestRun; fi
+          fi
+          DESTRUCTIVE_ARGS=()
+          if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
+            DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
+          fi
+          echo "test_level=$TEST_LEVEL" >> "$GITHUB_OUTPUT"
+          if [ "$TEST_LEVEL" = "NoTestRun" ]; then
+            echo "mode=dry-run" >> "$GITHUB_OUTPUT"
+            sf project deploy start --dry-run --ignore-conflicts --manifest deploy-package/package/package.xml \
+              "${DESTRUCTIVE_ARGS[@]}" --test-level NoTestRun --target-org target-org --wait 60 --json > validate-result.json || true
+          else
+            echo "mode=validate" >> "$GITHUB_OUTPUT"
+            sf project deploy validate --manifest deploy-package/package/package.xml \
+              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > validate-result.json || true
+          fi
+      - name: Publish candidate validation result
+        id: validate-result
+        if: steps.delta.outputs.has_changes == 'true'
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          FAILED=0
+          node .pipeline/scripts/deploy/parse-validate-result.mjs validate-result.json --errors errors.md || FAILED=1
+          if [ -f errors.md ]; then
+            { echo "<!-- orbitops:validate-errors -->"; cat errors.md; } > errors-comment.md
+          else
+            printf '<!-- orbitops:validate-errors -->\n## ✅ Candidate validation succeeded against %s\n\nThe real deployment will run next. The target branch is still unchanged.\n' "${{ needs.prepare.outputs.org }}" > errors-comment.md
+          fi
+          node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
+          exit "$FAILED"
+      - name: Create deployment record
+        id: gh-deploy
+        if: steps.delta.outputs.has_changes == 'true'
+        env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          ID=$(printf '{"ref":"%s","environment":"%s","auto_merge":false,"required_contexts":[]}' \
+              "$CANDIDATE_SHA" "${{ needs.prepare.outputs.environment }}" \
+            | gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments" --input - --jq '.id' 2>/dev/null || true)
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+      - name: Deploy the candidate for real
+        if: steps.delta.outputs.has_changes == 'true'
+        id: actual
+        env:
+          TEST_LEVEL: ${{ steps.validation.outputs.test_level }}
+          VALIDATION_MODE: ${{ steps.validation.outputs.mode }}
+          VALIDATION_ID: ${{ steps.validate-result.outputs.validation_id }}
+        run: |
+          DESTRUCTIVE_ARGS=()
+          if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
+            DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
+          fi
+          if [ "$VALIDATION_MODE" = "validate" ] && [ -n "$VALIDATION_ID" ]; then
+            echo "Completing the validated candidate deployment."
+            sf project deploy quick --job-id "$VALIDATION_ID" --target-org target-org --wait 60 --json > deploy-result.json || true
+          else
+            echo "Deploying the candidate after its dry-run."
+            sf project deploy start --ignore-conflicts --manifest deploy-package/package/package.xml \
+              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > deploy-result.json || true
+          fi
+      - name: Publish actual deployment result
+        if: steps.delta.outputs.has_changes == 'true'
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          FAILED=0
+          node .pipeline/scripts/deploy/parse-validate-result.mjs deploy-result.json --errors errors.md || FAILED=1
+          if [ -f errors.md ]; then
+            {
+              echo "<!-- orbitops:validate-errors -->"
+              echo "## ❌ Salesforce deployment failed"
+              echo
+              sed '1,2d' errors.md
+            } > errors-comment.md
+          else
+            printf '<!-- orbitops:validate-errors -->\n## ✅ Salesforce deployment succeeded\n\nRecording this exact release in the target branch now.\n' > errors-comment.md
+          fi
+          node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
+          exit "$FAILED"
+      - name: Merge only the candidate Salesforce deployed
+        id: merge
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          BASE_SHA: ${{ needs.prepare.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.prepare.outputs.head_sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" > pr-before-merge.json
+          node -e '
+            const fs = require("fs");
+            const pr = JSON.parse(fs.readFileSync("pr-before-merge.json", "utf8"));
+            if (pr.state !== "open" || pr.base.ref !== process.env.TARGET_BRANCH || pr.base.sha !== process.env.BASE_SHA || pr.head.sha !== process.env.HEAD_SHA) {
+              throw new Error("The change changed before it could be recorded. Salesforce is unchanged from the successful candidate, but the target branch was not updated. Ask a release manager to retry from the current target state.");
+            }
+          '
+          MERGED_SHA=$(gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/merge" \
+            -f sha="$HEAD_SHA" -f merge_method=merge --jq '.sha')
+          if [ -z "$MERGED_SHA" ] || [ "$MERGED_SHA" = "null" ]; then
+            echo "Salesforce succeeded but GitHub did not record the release. Stop further releases and ask a platform owner to reconcile the target branch."
+            exit 1
+          fi
+          echo "sha=$MERGED_SHA" >> "$GITHUB_OUTPUT"
+      - name: Confirm the branch exactly matches the deployed candidate
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          MERGED_SHA: ${{ steps.merge.outputs.sha }}
+          CANDIDATE_TREE: ${{ steps.candidate.outputs.tree }}
+        run: |
+          git fetch --no-tags origin "$TARGET_BRANCH"
+          BRANCH_SHA=$(git rev-parse "origin/${TARGET_BRANCH}")
+          BRANCH_TREE=$(git rev-parse "${BRANCH_SHA}^{tree}")
+          if [ "$BRANCH_SHA" != "$MERGED_SHA" ] || [ "$BRANCH_TREE" != "$CANDIDATE_TREE" ]; then
+            echo "Salesforce succeeded but the target branch no longer exactly records that candidate. Stop further releases and ask a platform owner to reconcile it."
+            exit 1
+          fi
+      - name: Record the deployed branch history
+        id: record
+        env:
+          BASE_SHA: ${{ needs.prepare.outputs.base_sha }}
+          MERGED_SHA: ${{ steps.merge.outputs.sha }}
+        run: |
+          git config user.name "orbitops-bot"
+          git config user.email "orbitops-bot@users.noreply.github.com"
+          ENV="${{ needs.prepare.outputs.environment }}"
+          SEQ=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV")
+          TAG="deploy/${ENV}/${SEQ}"
+          git log --format=%B%x00 "${BASE_SHA}..${MERGED_SHA}" | node -e '
+            const fs = require("fs");
+            const messages = fs.readFileSync(0, "utf8").split("\0").map((m) => m.trim()).filter(Boolean);
+            fs.writeFileSync("commit-messages.json", JSON.stringify(messages));
+          '
+          node .pipeline/scripts/deploy/manifest.mjs --env "$ENV" --seq "$SEQ" --sha "$MERGED_SHA" \
+            --delta-dir deploy-package --commits-file commit-messages.json \
+            --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --actor "$GITHUB_ACTOR" --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --extra '{"reason":"candidate deployment","mode":"delta"}' --out manifest.json
+          git tag -a "$TAG" "$MERGED_SHA" -m "Salesforce DevOps release: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          git push -q origin "$TAG"
+          for attempt in 1 2 3; do
+            git fetch -q origin orbitops-meta 2>/dev/null || true
+            if git show-ref -q refs/remotes/origin/orbitops-meta; then
+              git worktree add -q .meta origin/orbitops-meta
+            else
+              git worktree add -q --detach .meta
+              git -C .meta checkout -q --orphan orbitops-meta
+              git -C .meta rm -rfq . 2>/dev/null || true
+            fi
+            mkdir -p ".meta/deployments/${ENV}"
+            cp manifest.json ".meta/deployments/${ENV}/${SEQ}.json"
+            git -C .meta add -A
+            git -C .meta commit -q -m "Record ${TAG}"
+            if git -C .meta push -q origin HEAD:orbitops-meta; then
+              git worktree remove -f .meta; break
+            fi
+            git worktree remove -f .meta
+            echo "meta push race (attempt $attempt), retrying"
+          done
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Tidy completed work branch
+        # Stage-to-stage promotion branches are long-lived environment records;
+        # only disposable work/compatibility branches are removed.
+        if: startsWith(needs.prepare.outputs.head_ref, 'feature/') || startsWith(needs.prepare.outputs.head_ref, 'orbitops/compat/')
+        env:
+          HEAD_REF: ${{ needs.prepare.outputs.head_ref }}
+        run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${HEAD_REF}" || true
+      - name: Notify work items
+        run: node .pipeline/scripts/workitems/post-deployment.mjs manifest.json --status deployed --out workitem-postbacks.json
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: workitem-postbacks
+          path: workitem-postbacks.json
+          if-no-files-found: ignore
+      - name: Mark deployment status
+        if: always()
+        run: |
+          [ -z "${{ steps.gh-deploy.outputs.id }}" ] && exit 0
+          STATE=$([ "${{ job.status }}" = "success" ] && echo success || echo failure)
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${{ steps.gh-deploy.outputs.id }}/statuses" \
+            -f state="$STATE" \
+            -f log_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > /dev/null
+
+  back-promote:
+    name: Back-promotion PRs
+    needs: [prepare, deploy-and-record]
+    if: needs.prepare.outputs.is_last_stage == 'true' && needs.deploy-and-record.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { ref: main, path: .pipeline }
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
+      - run: npm ci --prefix .pipeline
+      - name: Open sync PRs
+        working-directory: .pipeline
+        run: |
+          PAIRS=$(node scripts/context/back-promotion-pairs.mjs)
+          for PAIR in $PAIRS; do
+            FROM="${PAIR%%:*}"; TO="${PAIR##*:}"
+            if [ "$(gh pr list --repo "$GITHUB_REPOSITORY" --base "$TO" --head "$FROM" --state open --json number --jq length)" = "0" ]; then
+              gh label create back-promotion --repo "$GITHUB_REPOSITORY" --color 0e8a16 2>/dev/null || true
+              BODY=$(printf 'Automated sync after a production release so lower stages do not drift.\n\nWork-Items: POC-0')
+              gh pr create --repo "$GITHUB_REPOSITORY" --base "$TO" --head "$FROM" \
+                --title "Back-promotion: sync $TO with $FROM (POC-0)" \
+                --label back-promotion --body "$BODY" || echo "no diff between $FROM and $TO"
+            fi
+          done
