@@ -6,13 +6,24 @@ name: Salesforce DevOps Retrieve
 on:
   workflow_dispatch:
     inputs:
+      operation:
+        description: "tracked, catalog, or selected"
+        required: true
+        default: tracked
+        type: choice
+        options: [tracked, catalog, selected]
       work_branch:
         description: "Work-item branch to commit retrieved changes to (feature/…)"
-        required: true
+        required: false
+        default: ""
       source_org:
         description: "Org key the builder worked in (a devOrgs entry or stage org from .orbitops/pipeline.yml)"
         required: true
         default: INT
+      selection:
+        description: "Explicit Type:Member entries, one per line (selected operation only)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -72,16 +83,54 @@ jobs:
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
           alias: source-org
 
-      - name: Build manifest from source tracking
+      - name: Prepare metadata request
         id: manifest
+        env:
+          ORBITOPS_SELECTION: ${{ inputs.selection }}
         run: |
-          node scripts/retrieve/source-members.mjs --org source-org \
-            --out retrieve-package.xml --json tracked.json
+          if [ "${{ inputs.operation }}" = "catalog" ]; then
+            node scripts/retrieve/metadata-catalog.mjs --org source-org --out metadata-catalog.json
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ inputs.operation }}" = "selected" ]; then
+            node scripts/retrieve/metadata-selection.mjs --out retrieve-package.xml --json tracked.json
+          else
+            node scripts/retrieve/source-members.mjs --org source-org \
+              --out retrieve-package.xml --json tracked.json
+          fi
           COUNT=$(node -pe 'JSON.parse(require("fs").readFileSync("tracked.json","utf8")).total')
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
+      - name: Publish sandbox catalogue
+        if: inputs.operation == 'catalog'
+        run: |
+          set -euo pipefail
+          git config user.name "orbitops-bot"
+          git config user.email "orbitops-bot@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch -q origin orbitops-meta 2>/dev/null || true
+            if git show-ref -q refs/remotes/origin/orbitops-meta; then
+              git worktree add -q .meta origin/orbitops-meta
+            else
+              git worktree add -q --detach .meta
+              git -C .meta checkout -q --orphan orbitops-meta
+              git -C .meta rm -rfq . 2>/dev/null || true
+            fi
+            mkdir -p .meta/metadata-catalogs
+            cp metadata-catalog.json ".meta/metadata-catalogs/${GITHUB_RUN_ID}.json"
+            git -C .meta add -A
+            git -C .meta commit -q -m "Record metadata catalogue ${GITHUB_RUN_ID}"
+            if git -C .meta push -q origin HEAD:orbitops-meta; then
+              git worktree remove -f .meta
+              break
+            fi
+            git worktree remove -f .meta
+            echo "catalogue push race (attempt $attempt), retrying"
+          done
+
       - name: Retrieve into the work branch
-        if: steps.manifest.outputs.count != '0'
+        if: inputs.operation != 'catalog' && steps.manifest.outputs.count != '0'
         run: |
           set -euo pipefail
           WB="${{ inputs.work_branch }}"
@@ -116,5 +165,5 @@ jobs:
           fi
 
       - name: Nothing tracked
-        if: steps.manifest.outputs.count == '0'
+        if: inputs.operation == 'tracked' && steps.manifest.outputs.count == '0'
         run: echo "No tracked changes found in the ${{ inputs.source_org }} org." >> "$GITHUB_STEP_SUMMARY"
