@@ -1,0 +1,28 @@
+{
+  "type": "deploy-preview",
+  "env": "uat",
+  "runId": "31178204855",
+  "sha": "a92a11c9d95262aa8332fb8c04b741b87e9cc5e5",
+  "mode": "delta",
+  "components": {
+    "CustomObject": [
+      "Bank_Transactions__c"
+    ],
+    "CustomField": [
+      "Account.mem__c"
+    ],
+    "Flow": [
+      "data_capture_2"
+    ],
+    "Layout": [
+      "Account-Account %28Marketing%29 Layout",
+      "Account-Account %28Sales%29 Layout",
+      "Account-Account %28Support%29 Layout",
+      "Account-Account Layout"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 7,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-07T12:27:35.245Z"
+}
