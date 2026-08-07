@@ -15,6 +15,7 @@ import { writeFileSync } from "node:fs";
 const ALLOWED_TYPES = new Set([
   "CustomObject", "CustomField", "ValidationRule", "RecordType", "ListView",
   "CompactLayout", "Layout", "FlexiPage", "Flow", "ApexClass", "ApexTrigger",
+  "LightningComponentBundle", "AuraDefinitionBundle",
   "PermissionSet", "CustomTab", "QuickAction", "EmailTemplate", "ReportType",
   "PathAssistant", "GlobalValueSet", "StandardValueSet", "CustomLabel", "CustomLabels",
 ]);

@@ -106,6 +106,12 @@ flows get a visual Flow-Builder-style diff. **Ticked = part of your change** —
 untick anything that isn't yours (shared sandboxes surface everyone's edits)
 and *Remove the unticked items*.
 
+If an item was retrieved before and Salesforce no longer reports it as new,
+use **Choose specific items → Browse sandbox**. Drill into object fields, Apex,
+Lightning Web Components, Aura components, flows, or validation rules, tick up
+to 100 items, and pull only that selection. This is safer than resetting source
+tracking or making a dummy edit in the sandbox.
+
 **Git**: you already committed in Phase 2. If a citizen teammate pulled into
 this branch too, `git pull` and review — UI pulls are ordinary commits by the
 retrieve workflow.
