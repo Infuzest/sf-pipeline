@@ -1,0 +1,16 @@
+{
+  "type": "deploy-preview",
+  "env": "uat",
+  "runId": "31282812476",
+  "sha": "5a09c9da33cac11188025587b9a9b13d8df5cd04",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Account.Taxi__c"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 1,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-08T23:16:38.429Z"
+}
