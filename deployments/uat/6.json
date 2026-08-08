@@ -1,0 +1,35 @@
+{
+  "type": "rollback",
+  "env": "uat",
+  "seq": 6,
+  "sha": "56a1879fa2d6101df96a5adbfc35077a8f6eac63",
+  "workItems": [],
+  "components": {
+    "CustomObject": [
+      "Bank_Transactions__c"
+    ],
+    "Flow": [
+      "data_capture_2"
+    ]
+  },
+  "destructive": {
+    "CustomField": [
+      "Account.mem__c"
+    ],
+    "Layout": [
+      "Account-Account %28Marketing%29 Layout",
+      "Account-Account %28Sales%29 Layout",
+      "Account-Account %28Support%29 Layout",
+      "Account-Account Layout"
+    ]
+  },
+  "componentCount": 2,
+  "destructiveCount": 5,
+  "runUrl": "https://github.com/SalikPOC/sf-pipeline/actions/runs/31274175104",
+  "actor": "orbitops-poc-sfdcdevops[bot]",
+  "timestamp": "2026-08-08T19:22:04Z",
+  "rolledBackFrom": 5,
+  "rolledBackTo": 4,
+  "reason": "TEats",
+  "includeDestructive": false
+}
