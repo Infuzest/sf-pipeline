@@ -1,0 +1,78 @@
+{
+  "env": "uat",
+  "targetSeq": 4,
+  "currentSeq": 5,
+  "includeDestructive": false,
+  "safety": {
+    "env": "uat",
+    "from": 5,
+    "to": 4,
+    "includeDestructive": false,
+    "changed": {
+      "CustomObject": [
+        "Bank_Transactions__c"
+      ],
+      "Flow": [
+        "data_capture_2"
+      ]
+    },
+    "destructive": {
+      "CustomField": [
+        "Account.mem__c"
+      ],
+      "Layout": [
+        "Account-Account %28Marketing%29 Layout",
+        "Account-Account %28Sales%29 Layout",
+        "Account-Account %28Support%29 Layout",
+        "Account-Account Layout"
+      ]
+    },
+    "changedCount": 2,
+    "destructiveCount": 5,
+    "warnings": [
+      {
+        "severity": "high",
+        "type": "Flow",
+        "member": "data_capture_2",
+        "text": "⚠️ Deploying an older Flow version ADDS a new version and activates it; newer versions remain in the org (not removed)."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Account.mem__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Marketing%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Sales%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Support%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      }
+    ],
+    "highRiskCount": 6
+  },
+  "validation": {
+    "succeeded": true,
+    "errors": null
+  },
+  "runId": "31273784915",
+  "timestamp": "2026-08-08T19:11:56.185Z"
+}
