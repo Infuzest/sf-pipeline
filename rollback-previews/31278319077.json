@@ -1,0 +1,38 @@
+{
+  "env": "uat",
+  "targetSeq": 5,
+  "currentSeq": 6,
+  "includeDestructive": true,
+  "safety": {
+    "env": "uat",
+    "from": 6,
+    "to": 5,
+    "includeDestructive": true,
+    "changed": {
+      "CustomObject": [
+        "Bank_Transactions__c"
+      ],
+      "Flow": [
+        "data_capture_2"
+      ]
+    },
+    "destructive": {},
+    "changedCount": 2,
+    "destructiveCount": 0,
+    "warnings": [
+      {
+        "severity": "high",
+        "type": "Flow",
+        "member": "data_capture_2",
+        "text": "⚠️ Deploying an older Flow version ADDS a new version and activates it; newer versions remain in the org (not removed)."
+      }
+    ],
+    "highRiskCount": 1
+  },
+  "validation": {
+    "succeeded": true,
+    "errors": null
+  },
+  "runId": "31278319077",
+  "timestamp": "2026-08-08T21:02:53.815Z"
+}
