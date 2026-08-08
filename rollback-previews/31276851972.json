@@ -1,0 +1,65 @@
+{
+  "env": "uat",
+  "targetSeq": 4,
+  "currentSeq": 6,
+  "includeDestructive": true,
+  "safety": {
+    "env": "uat",
+    "from": 6,
+    "to": 4,
+    "includeDestructive": true,
+    "changed": {},
+    "destructive": {
+      "CustomField": [
+        "Account.mem__c"
+      ],
+      "Layout": [
+        "Account-Account %28Marketing%29 Layout",
+        "Account-Account %28Sales%29 Layout",
+        "Account-Account %28Support%29 Layout",
+        "Account-Account Layout"
+      ]
+    },
+    "changedCount": 0,
+    "destructiveCount": 5,
+    "warnings": [
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Account.mem__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Marketing%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Sales%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Support%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      }
+    ],
+    "highRiskCount": 5
+  },
+  "validation": {
+    "succeeded": false,
+    "errors": "## ❌ Validation failed\n\n1 Salesforce component needs attention.\n\n| API Name | Type | Line | Column | Error Message |\n|---|---|---:|---:|---|\n| Account-Account (Support) Layout | Layout |  |  | Cannot delete the only layout |"
+  },
+  "runId": "31276851972",
+  "timestamp": "2026-08-08T20:26:21.712Z"
+}
