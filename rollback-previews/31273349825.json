@@ -1,0 +1,250 @@
+{
+  "env": "uat",
+  "targetSeq": 1,
+  "currentSeq": 5,
+  "includeDestructive": true,
+  "safety": {
+    "env": "uat",
+    "from": 5,
+    "to": 1,
+    "includeDestructive": true,
+    "changed": {
+      "CustomField": [
+        "BUP_Clinic__c.Notes__c"
+      ]
+    },
+    "destructive": {
+      "CustomObject": [
+        "Bank_Transactions__c",
+        "Contact",
+        "Tickets__c"
+      ],
+      "CustomField": [
+        "Account.mem__c",
+        "Bank_Transactions__c.Account__c",
+        "Bank_Transactions__c.Amount__c",
+        "Bank_Transactions__c.Description__c",
+        "Bank_Transactions__c.Sort_Code__c",
+        "Contact.Group__c",
+        "Tickets__c.Contact__c",
+        "Tickets__c.Price__c"
+      ],
+      "CustomTab": [
+        "Bank_Transactions__c",
+        "Tickets__c"
+      ],
+      "Flow": [
+        "Orchestrator_Flow_TEst",
+        "Ticket_to_contact",
+        "data_capture_2"
+      ],
+      "Layout": [
+        "Account-Account %28Marketing%29 Layout",
+        "Account-Account %28Sales%29 Layout",
+        "Account-Account %28Support%29 Layout",
+        "Account-Account Layout",
+        "Bank_Transactions__c-Bank Transactions Layout",
+        "Contact-Contact %28Marketing%29 Layout",
+        "Contact-Contact %28Sales%29 Layout",
+        "Contact-Contact %28Support%29 Layout",
+        "Contact-Contact Layout",
+        "Tickets__c-Tickets Layout"
+      ],
+      "ListView": [
+        "Bank_Transactions__c.All",
+        "Tickets__c.All"
+      ]
+    },
+    "changedCount": 1,
+    "destructiveCount": 28,
+    "warnings": [
+      {
+        "severity": "info",
+        "type": "CustomField",
+        "member": "BUP_Clinic__c.Notes__c",
+        "text": "Field definition (type/length/picklist) reverts; existing record values are not changed."
+      },
+      {
+        "severity": "info",
+        "type": "CustomField",
+        "member": "BUP_Clinic__c.Notes__c",
+        "text": "If this field is a picklist, values in use by records cannot be removed and the deploy may fail."
+      },
+      {
+        "severity": "high",
+        "type": "CustomObject",
+        "member": "Bank_Transactions__c",
+        "text": "🔴 Deleting an object permanently destroys the object and ALL its records."
+      },
+      {
+        "severity": "high",
+        "type": "CustomObject",
+        "member": "Contact",
+        "text": "🔴 Deleting an object permanently destroys the object and ALL its records."
+      },
+      {
+        "severity": "high",
+        "type": "CustomObject",
+        "member": "Tickets__c",
+        "text": "🔴 Deleting an object permanently destroys the object and ALL its records."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Account.mem__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Bank_Transactions__c.Account__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Bank_Transactions__c.Amount__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Bank_Transactions__c.Description__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Bank_Transactions__c.Sort_Code__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Contact.Group__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Tickets__c.Contact__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Tickets__c.Price__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      },
+      {
+        "severity": "high",
+        "type": "CustomTab",
+        "member": "Bank_Transactions__c",
+        "text": "⚠️ Deleting CustomTab may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "CustomTab",
+        "member": "Tickets__c",
+        "text": "⚠️ Deleting CustomTab may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Flow",
+        "member": "data_capture_2",
+        "text": "⚠️ Flow removal may fail if the flow is active or referenced; may orphan running interviews."
+      },
+      {
+        "severity": "high",
+        "type": "Flow",
+        "member": "Orchestrator_Flow_TEst",
+        "text": "⚠️ Flow removal may fail if the flow is active or referenced; may orphan running interviews."
+      },
+      {
+        "severity": "high",
+        "type": "Flow",
+        "member": "Ticket_to_contact",
+        "text": "⚠️ Flow removal may fail if the flow is active or referenced; may orphan running interviews."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Marketing%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Sales%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account %28Support%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Account-Account Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Bank_Transactions__c-Bank Transactions Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Contact-Contact %28Marketing%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Contact-Contact %28Sales%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Contact-Contact %28Support%29 Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Contact-Contact Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "Layout",
+        "member": "Tickets__c-Tickets Layout",
+        "text": "⚠️ Deleting Layout may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "ListView",
+        "member": "Bank_Transactions__c.All",
+        "text": "⚠️ Deleting ListView may be irreversible — review carefully."
+      },
+      {
+        "severity": "high",
+        "type": "ListView",
+        "member": "Tickets__c.All",
+        "text": "⚠️ Deleting ListView may be irreversible — review carefully."
+      }
+    ],
+    "highRiskCount": 28
+  },
+  "validation": {
+    "succeeded": false,
+    "errors": "## ❌ Validation failed\n\n13 Salesforce components need attention.\n\n| API Name | Type | Line | Column | Error Message |\n|---|---|---:|---:|---|\n| BUP_Clinic__c.Notes__c |  |  |  | An object 'BUP_Clinic__c.Notes__c' of type CustomField was named in package.xml, but was not found in zipped directory |\n| Orchestrator_Flow_TEst | Flow |  |  | insufficient access rights on cross-reference id |\n| data_capture_2 | Flow |  |  | insufficient access rights on cross-reference id |\n| destructiveChanges.xml | Flow |  |  | No Flow named: Ticket_to_contact found |\n| destructiveChanges.xml | CustomTab |  |  | No CustomTab named: Tickets__c found |\n| Account-Account (Support) Layout | Layout |  |  | Cannot delete the only layout |\n| destructiveChanges.xml | Layout |  |  | No Layout named: Tickets__c-Tickets Layout found |\n| destructiveChanges.xml | ListView |  |  | No ListView named: Tickets__c.All found |\n| destructiveChanges.xml | CustomField |  |  | No CustomField named: Tickets__c.Contact__c found |\n| destructiveChanges.xml | CustomField |  |  | No CustomField named: Contact.Group__c found |\n| destructiveChanges.xml | CustomField |  |  | No CustomField named: Tickets__c.Price__c found |\n| Contact | CustomObject |  |  | The CustomObject called 'Contact' is standard and cannot be deleted |\n| destructiveChanges.xml | CustomObject |  |  | No CustomObject named: Tickets__c found |"
+  },
+  "runId": "31273349825",
+  "timestamp": "2026-08-08T19:01:44.845Z"
+}
