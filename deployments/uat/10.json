@@ -1,0 +1,22 @@
+{
+  "type": "rollback",
+  "env": "uat",
+  "seq": 10,
+  "sha": "522205f766c932c28379b144a0569ccb6cbae9dc",
+  "workItems": [],
+  "components": {},
+  "destructive": {
+    "CustomField": [
+      "Account.VAT__c"
+    ]
+  },
+  "componentCount": 0,
+  "destructiveCount": 1,
+  "runUrl": "https://github.com/Xyraxel/sf-pipeline/actions/runs/31326851864",
+  "actor": "orbitops-poc-sfdcdevops[bot]",
+  "timestamp": "2026-08-09T17:38:35Z",
+  "rolledBackFrom": 9,
+  "rolledBackTo": 8,
+  "reason": "don't need the field",
+  "includeDestructive": true
+}
