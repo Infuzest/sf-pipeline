@@ -1,0 +1,16 @@
+{
+  "type": "deploy-preview",
+  "env": "uat",
+  "runId": "31325656231",
+  "sha": "b259cfc9334d381a1e3c5198b937f0a10f1fe12b",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Account.VAT__c"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 1,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-09T17:11:05.312Z"
+}
