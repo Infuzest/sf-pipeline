@@ -1,0 +1,16 @@
+{
+  "type": "deploy-preview",
+  "env": "uat",
+  "runId": "31322742580",
+  "sha": "1b8e7217eca5f7dcfadb7cb9b4a11fe9e67bb5b7",
+  "mode": "delta",
+  "components": {
+    "CustomObject": [
+      "Bank_Transactions__c"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 1,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-09T16:49:00.179Z"
+}
