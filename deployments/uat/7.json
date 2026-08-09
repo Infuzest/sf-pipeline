@@ -1,0 +1,22 @@
+{
+  "type": "deploy",
+  "env": "uat",
+  "seq": 7,
+  "sha": "26d3cbcfce78dbad19be2eba91da8d8d33066a82",
+  "workItems": [
+    "PROJ-127"
+  ],
+  "components": {
+    "CustomField": [
+      "Account.Taxi__c"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 1,
+  "destructiveCount": 0,
+  "runUrl": "https://github.com/SalikPOC/sf-pipeline/actions/runs/31288198433",
+  "actor": "orbitops-poc-sfdcdevops[bot]",
+  "timestamp": "2026-08-09T01:27:53Z",
+  "reason": "candidate deployment",
+  "mode": "delta"
+}
