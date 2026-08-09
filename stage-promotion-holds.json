@@ -2,13 +2,14 @@
   {
     "fromBranch": "uat",
     "toBranch": "main",
-    "fromSha": "56a1879fa2d6101df96a5adbfc35077a8f6eac63",
-    "componentCount": 6,
+    "fromSha": "7f37e3f4b2eae55dae5386e605dbdf16cd03bff3",
+    "componentCount": 7,
     "workItems": [
       "PROJ-125",
-      "POC-0"
+      "POC-0",
+      "PROJ-127"
     ],
-    "deferredAt": "2026-08-09T01:05:32.091Z",
+    "deferredAt": "2026-08-09T15:52:39.987Z",
     "deferredBy": "SalikPOC"
   }
 ]
