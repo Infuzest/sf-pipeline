@@ -23,5 +23,5 @@ concurrency:
 
 jobs:
   checks:
-    uses: SalikPOC/sf-pipeline/.github/workflows/_pr-validate.yml@main
+    uses: Xyraxel/sf-pipeline/.github/workflows/_pr-validate.yml@main
     secrets: inherit
