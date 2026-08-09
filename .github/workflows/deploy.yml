@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   pipeline:
-    uses: SalikPOC/sf-pipeline/.github/workflows/_deploy.yml@main
+    uses: Xyraxel/sf-pipeline/.github/workflows/_deploy.yml@main
     with:
       reason: ${{ inputs.reason || '' }}
       mode: ${{ inputs.mode || 'delta' }}
