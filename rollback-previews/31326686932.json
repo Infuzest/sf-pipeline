@@ -1,0 +1,35 @@
+{
+  "env": "uat",
+  "targetSeq": 8,
+  "currentSeq": 9,
+  "includeDestructive": true,
+  "safety": {
+    "env": "uat",
+    "from": 9,
+    "to": 8,
+    "includeDestructive": true,
+    "changed": {},
+    "destructive": {
+      "CustomField": [
+        "Account.VAT__c"
+      ]
+    },
+    "changedCount": 0,
+    "destructiveCount": 1,
+    "warnings": [
+      {
+        "severity": "high",
+        "type": "CustomField",
+        "member": "Account.VAT__c",
+        "text": "🔴 Deleting a field permanently destroys all data stored in it. This cannot be undone."
+      }
+    ],
+    "highRiskCount": 1
+  },
+  "validation": {
+    "succeeded": true,
+    "errors": null
+  },
+  "runId": "31326686932",
+  "timestamp": "2026-08-09T17:34:11.011Z"
+}
