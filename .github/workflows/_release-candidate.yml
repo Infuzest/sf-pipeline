@@ -182,6 +182,10 @@ jobs:
         if: steps.delta.outputs.has_changes == 'true'
         env:
           TEST_LEVEL_INPUT: ${{ needs.prepare.outputs.test_level }}
+          # The final configured stage is Production. Salesforce supports
+          # validated Quick Deploys there; UAT and other sandbox-like stages
+          # must use a dry-run followed by their real atomic deployment.
+          IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
         run: |
           TEST_LEVEL="$TEST_LEVEL_INPUT"
           HAS_APEX=$(grep -l "ApexClass\\|ApexTrigger" deploy-package/package/package.xml 2>/dev/null || true)
@@ -193,13 +197,19 @@ jobs:
             DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
           fi
           echo "test_level=$TEST_LEVEL" >> "$GITHUB_OUTPUT"
-          if [ "$TEST_LEVEL" = "NoTestRun" ]; then
+          if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$TEST_LEVEL" != "NoTestRun" ]; then
+            # Production: retain Salesforce's standard validate → Quick Deploy
+            # path. The job ID is valid for the approved, exact candidate.
+            echo "mode=quick-deploy" >> "$GITHUB_OUTPUT"
+            sf project deploy validate --manifest deploy-package/package/package.xml \
+              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > validate-result.json || true
+          else
+            # Salesforce does not Quick Deploy to sandboxes/scratch orgs. A
+            # dry-run still validates the same candidate; the next step does
+            # one real atomic deployment and the branch remains untouched if
+            # Salesforce rejects it.
             echo "mode=dry-run" >> "$GITHUB_OUTPUT"
             sf project deploy start --dry-run --ignore-conflicts --manifest deploy-package/package/package.xml \
-              "${DESTRUCTIVE_ARGS[@]}" --test-level NoTestRun --target-org target-org --wait 60 --json > validate-result.json || true
-          else
-            echo "mode=validate" >> "$GITHUB_OUTPUT"
-            sf project deploy validate --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > validate-result.json || true
           fi
       - name: Publish candidate validation result
@@ -221,12 +231,24 @@ jobs:
         id: gh-deploy
         if: steps.delta.outputs.has_changes == 'true'
         env:
-          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          # The candidate merge commit exists only on the runner until the
+          # release succeeds. GitHub Deployments require a ref GitHub knows,
+          # so record the open promotion's head while the manifest retains the
+          # exact deployed candidate tree.
+          DEPLOYMENT_REF: ${{ needs.prepare.outputs.head_sha }}
         run: |
-          ID=$(printf '{"ref":"%s","environment":"%s","auto_merge":false,"required_contexts":[]}' \
-              "$CANDIDATE_SHA" "${{ needs.prepare.outputs.environment }}" \
-            | gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments" --input - --jq '.id' 2>/dev/null || true)
-          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          if ID=$(printf '{"ref":"%s","environment":"%s","auto_merge":false,"required_contexts":[]}' \
+              "$DEPLOYMENT_REF" "${{ needs.prepare.outputs.environment }}" \
+            | gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments" --input - --jq '.id'); then
+            if [[ "$ID" =~ ^[0-9]+$ ]]; then
+              echo "id=$ID" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          # The deployment record is useful audit context, but it must never
+          # obscure the Salesforce result or turn an API error into an ID.
+          echo "GitHub deployment record was not created; continuing with the Salesforce release." >&2
+          echo "id=" >> "$GITHUB_OUTPUT"
       - name: Deploy the candidate for real
         if: steps.delta.outputs.has_changes == 'true'
         id: actual
@@ -239,11 +261,11 @@ jobs:
           if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
             DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
           fi
-          if [ "$VALIDATION_MODE" = "validate" ] && [ -n "$VALIDATION_ID" ]; then
+          if [ "$VALIDATION_MODE" = "quick-deploy" ] && [ -n "$VALIDATION_ID" ]; then
             echo "Completing the validated candidate deployment."
             sf project deploy quick --job-id "$VALIDATION_ID" --target-org target-org --wait 60 --json > deploy-result.json || true
           else
-            echo "Deploying the candidate after its dry-run."
+            echo "Deploying the candidate after its practice run."
             sf project deploy start --ignore-conflicts --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > deploy-result.json || true
           fi
@@ -362,9 +384,10 @@ jobs:
       - name: Mark deployment status
         if: always()
         run: |
-          [ -z "${{ steps.gh-deploy.outputs.id }}" ] && exit 0
+          ID="${{ steps.gh-deploy.outputs.id }}"
+          [[ "$ID" =~ ^[0-9]+$ ]] || exit 0
           STATE=$([ "${{ job.status }}" = "success" ] && echo success || echo failure)
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${{ steps.gh-deploy.outputs.id }}/statuses" \
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${ID}/statuses" \
             -f state="$STATE" \
             -f log_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > /dev/null
 

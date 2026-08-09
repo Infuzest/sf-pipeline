@@ -227,3 +227,14 @@ Node ESM scripts with `node --test` units · composite action
   post-success merge. The UI dispatches the candidate workflow, exposes its
   approval/progress alongside repair runs, and reports its Salesforce errors
   back on the original change.
+- 2026-08-09: Quick Deploy remains the production release path. A successful
+  `sf project deploy validate` in the UAT scratch org returned a genuine
+  `checkOnly` deployment ID, but Salesforce correctly rejected that ID for
+  Quick Deploy because the target is sandbox-like. The reusable candidate
+  workflow is now stage-aware: the final Production stage uses
+  validate → Quick Deploy, while UAT and other earlier stages use dry-run →
+  one real atomic deployment after approval. In both cases, the promotion PR
+  merges only after Salesforce succeeds, so a stage branch still means live.
+  The workflow also records GitHub Deployments against the PR head (the
+  temporary candidate merge SHA does not exist on GitHub) and never lets a
+  deployment-record error mask the Salesforce result.
