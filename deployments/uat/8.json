@@ -1,0 +1,22 @@
+{
+  "type": "deploy",
+  "env": "uat",
+  "seq": 8,
+  "sha": "f1143b35e8012ad7bfb7dc85a9eb4a12d292763e",
+  "workItems": [
+    "PROJ-128"
+  ],
+  "components": {
+    "CustomObject": [
+      "Bank_Transactions__c"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 1,
+  "destructiveCount": 0,
+  "runUrl": "https://github.com/Xyraxel/sf-pipeline/actions/runs/31322742580",
+  "actor": "orbitops-poc-sfdcdevops[bot]",
+  "timestamp": "2026-08-09T16:49:35Z",
+  "reason": "candidate deployment",
+  "mode": "delta"
+}
