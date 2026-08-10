@@ -41,6 +41,11 @@
             "description": "Apex test level for validation/deploy; Conditional = NoTestRun unless the delta contains Apex",
             "default": "RunLocalTests"
           },
+          "quickDeploy": {
+            "type": "boolean",
+            "description": "Use a matching successful Salesforce validation for Quick Deploy. Set false to always run a normal deployment.",
+            "default": true
+          },
           "branch": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",

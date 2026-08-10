@@ -42,6 +42,7 @@ jobs:
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
       test_level: ${{ steps.stage.outputs.test_level }}
+      quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
       has_changes: ${{ steps.precheck.outputs.has_changes }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -164,7 +165,7 @@ jobs:
 
       - name: Attempt quick-deploy
         id: quick
-        if: steps.range.outputs.mode == 'delta' && steps.range.outputs.empty != 'true'
+        if: needs.context.outputs.quick_deploy == 'true' && steps.range.outputs.mode == 'delta' && steps.range.outputs.empty != 'true'
         run: |
           node .pipeline/scripts/deploy/find-quickdeploy.mjs "$GITHUB_SHA" --dir qd-artifact
           if [ -f qd-artifact/quickdeploy.json ]; then
