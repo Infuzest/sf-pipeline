@@ -37,6 +37,7 @@ jobs:
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
       test_level: ${{ steps.stage.outputs.test_level }}
+      quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
       is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -186,9 +187,7 @@ jobs:
         if: steps.delta.outputs.has_changes == 'true'
         env:
           TEST_LEVEL_INPUT: ${{ needs.prepare.outputs.test_level }}
-          # The final configured stage is Production. Salesforce supports
-          # validated Quick Deploys there; UAT and other sandbox-like stages
-          # must use a dry-run followed by their real atomic deployment.
+          QUICK_DEPLOY_ENABLED: ${{ needs.prepare.outputs.quick_deploy }}
           IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
         run: |
           TEST_LEVEL="$TEST_LEVEL_INPUT"
@@ -201,17 +200,16 @@ jobs:
             DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
           fi
           echo "test_level=$TEST_LEVEL" >> "$GITHUB_OUTPUT"
-          if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$TEST_LEVEL" != "NoTestRun" ]; then
-            # Production: retain Salesforce's standard validate → Quick Deploy
-            # path. The job ID is valid for the approved, exact candidate.
+          if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$QUICK_DEPLOY_ENABLED" = "true" ] && [ "$TEST_LEVEL" != "NoTestRun" ]; then
+            # A Production stage configured for Quick Deploy retains Salesforce's
+            # standard validate → Quick Deploy path for the exact candidate.
             echo "mode=quick-deploy" >> "$GITHUB_OUTPUT"
             sf project deploy validate --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > validate-result.json || true
           else
-            # Salesforce does not Quick Deploy to sandboxes/scratch orgs. A
-            # dry-run still validates the same candidate; the next step does
-            # one real atomic deployment and the branch remains untouched if
-            # Salesforce rejects it.
+            # Stages without Quick Deploy (including sandbox demo targets) use a
+            # dry-run before the real atomic deployment. The branch remains
+            # untouched if Salesforce rejects it.
             echo "mode=dry-run" >> "$GITHUB_OUTPUT"
             sf project deploy start --dry-run --ignore-conflicts --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > validate-result.json || true
