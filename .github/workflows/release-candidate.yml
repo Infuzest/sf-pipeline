@@ -17,6 +17,16 @@ on:
         description: "Stage branch that represents the destination org"
         required: true
         type: string
+      release_type:
+        description: "Optional Production version label"
+        required: false
+        default: none
+        type: choice
+        options:
+          - none
+          - bugfix
+          - feature
+          - breaking
 
 permissions:
   contents: write # merge after success, deploy tag + orbitops-meta history
@@ -38,4 +48,5 @@ jobs:
     with:
       pr_number: ${{ inputs.pr_number }}
       target_branch: ${{ inputs.target_branch }}
+      release_type: ${{ inputs.release_type }}
     secrets: inherit
