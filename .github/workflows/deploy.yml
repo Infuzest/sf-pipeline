@@ -7,15 +7,25 @@
 name: Salesforce DevOps Deploy
 
 on:
-  push:
-    # Stage topology lives ONLY in .orbitops/pipeline.yml — the reusable
-    # workflow skips pushes to branches that aren't pipeline stages.
-    branches-ignore: ["feature/**", "orbitops-meta", "orbitops/**"]
+  # Normal releases run through release-candidate.yml: Salesforce deploys the
+  # PR candidate before it is merged, so a stage branch only records releases
+  # that are already live. This workflow remains the explicit repair path for
+  # a drifted org.
   workflow_dispatch:
     inputs:
       reason:
         description: "Why this manual deploy is needed (audit log)"
         required: true
+      mode:
+        description: "Full re-deploy repairs an org that has drifted from the branch"
+        required: false
+        default: delta
+        type: choice
+        options: [delta, full]
+      include:
+        description: "Extra components to add to the delta — Type:Member, comma separated (e.g. CustomObject:Bank_Transactions__c)"
+        required: false
+        default: ""
 
 permissions:
   contents: write # deploy tags + orbitops-meta branch
@@ -31,4 +41,6 @@ jobs:
     uses: Xyraxel/sf-pipeline/.github/workflows/_deploy.yml@main
     with:
       reason: ${{ inputs.reason || '' }}
+      mode: ${{ inputs.mode || 'delta' }}
+      include: ${{ inputs.include || '' }}
     secrets: inherit
