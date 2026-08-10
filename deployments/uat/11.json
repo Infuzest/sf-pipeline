@@ -1,0 +1,25 @@
+{
+  "type": "deploy",
+  "env": "uat",
+  "seq": 11,
+  "sha": "b5c6ce337fe0e9414bcd20f676a1a03065325035",
+  "workItems": [
+    "PROJ-130"
+  ],
+  "components": {
+    "CustomField": [
+      "Account.Membership_No__c"
+    ],
+    "Flow": [
+      "BGU_CreateLead"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "runUrl": "https://github.com/Xyraxel/sf-pipeline/actions/runs/31429476080",
+  "actor": "orbitops-poc-sfdcdevops[bot]",
+  "timestamp": "2026-08-10T20:34:09Z",
+  "reason": "candidate deployment",
+  "mode": "delta"
+}
