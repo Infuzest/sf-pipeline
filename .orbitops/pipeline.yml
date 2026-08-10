@@ -21,6 +21,9 @@ pipeline:
     environment: production
     authMethod: jwt
     testLevel: RunLocalTests
+    # This demo's Production target is a sandbox. Always perform a normal
+    # deployment instead of reusing a Salesforce validation job.
+    quickDeploy: false
     gates:
       scannerMaxSeverity: 2
       minCoverage: 80

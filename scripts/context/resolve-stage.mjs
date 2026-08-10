@@ -39,6 +39,7 @@ setOutputs({
   environment: stage.environment,
   auth_method: stage.authMethod,
   test_level: stage.testLevel,
+  quick_deploy: String(stage.quickDeploy !== false),
   min_coverage: stage.gates.minCoverage,
   scanner_max_severity: stage.gates.scannerMaxSeverity,
 });

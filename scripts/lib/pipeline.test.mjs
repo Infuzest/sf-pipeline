@@ -20,6 +20,7 @@ test("real pipeline.yml: every declared stage resolves (topology-agnostic)", () 
     assert.ok(["jwt", "sfdx-url"].includes(r.authMethod), `${s.branch}: valid authMethod`);
     assert.equal(typeof r.gates.minCoverage, "number", `${s.branch}: numeric minCoverage`);
     assert.ok(r.testLevel, `${s.branch}: testLevel resolved (defaulted if omitted)`);
+    assert.equal(typeof r.quickDeploy, "boolean", `${s.branch}: quickDeploy resolved (defaulted if omitted)`);
   }
 
   assert.throws(() => resolveStage(stages, "definitely-not-a-stage"), /No pipeline stage maps/);
@@ -33,6 +34,14 @@ test("unknown branch throws with known branches listed", () => {
 test("testLevel defaults to RunLocalTests", () => {
   const stages = [{ branch: "main", org: "PROD", environment: "production", authMethod: "jwt", gates: {} }];
   assert.equal(resolveStage(stages, "main").testLevel, "RunLocalTests");
+});
+
+test("quickDeploy defaults to true and can be disabled per stage", () => {
+  const defaults = [{ branch: "main", org: "PROD", environment: "production", authMethod: "jwt", gates: {} }];
+  assert.equal(resolveStage(defaults, "main").quickDeploy, true);
+
+  const disabled = [{ ...defaults[0], quickDeploy: false }];
+  assert.equal(resolveStage(disabled, "main").quickDeploy, false);
 });
 
 test("resolveOrg finds dev orgs, stage orgs, and rejects unknown keys", async () => {

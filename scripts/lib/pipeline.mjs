@@ -49,5 +49,8 @@ export function resolveStage(stages, branch) {
     const known = stages.map((s) => s.branch).join(", ");
     throw new Error(`No pipeline stage maps to branch "${branch}" (known: ${known})`);
   }
-  return { testLevel: "RunLocalTests", ...stage };
+  // Existing pipelines keep their current behaviour unless an administrator
+  // explicitly opts an environment out (for example, a sandbox used as a
+  // demo production target where a fresh deployment is more predictable).
+  return { testLevel: "RunLocalTests", quickDeploy: true, ...stage };
 }
