@@ -1,0 +1,19 @@
+{
+  "type": "deploy-preview",
+  "env": "production",
+  "runId": "31443174777",
+  "sha": "7c65cd6541bcd69bfdfed60174c1268c2d8dd760",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Account.Membership_No__c"
+    ],
+    "Flow": [
+      "BGU_CreateLead"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-10T23:40:41.733Z"
+}
