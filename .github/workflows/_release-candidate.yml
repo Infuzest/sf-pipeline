@@ -16,6 +16,10 @@ on:
       target_branch:
         required: true
         type: string
+      release_type:
+        required: false
+        default: none
+        type: string
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -329,22 +333,38 @@ jobs:
         env:
           BASE_SHA: ${{ needs.prepare.outputs.base_sha }}
           MERGED_SHA: ${{ steps.merge.outputs.sha }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
         run: |
           git config user.name "orbitops-bot"
           git config user.email "orbitops-bot@users.noreply.github.com"
           ENV="${{ needs.prepare.outputs.environment }}"
           SEQ=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV")
           TAG="deploy/${ENV}/${SEQ}"
+          VERSION_TAG=""
+          if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$RELEASE_TYPE" != "none" ]; then
+            VERSION_TAG=$(git tag -l 'v*' | node .pipeline/scripts/deploy/next-version.mjs "$RELEASE_TYPE")
+            if git rev-parse -q --verify "refs/tags/${VERSION_TAG}" >/dev/null; then
+              echo "Version tag ${VERSION_TAG} already exists. Nothing was changed; start the release again." >&2
+              exit 1
+            fi
+          fi
+          export VERSION_TAG
           git log --format=%B%x00 "${BASE_SHA}..${MERGED_SHA}" | node -e '
             const fs = require("fs");
             const messages = fs.readFileSync(0, "utf8").split("\0").map((m) => m.trim()).filter(Boolean);
             fs.writeFileSync("commit-messages.json", JSON.stringify(messages));
           '
+          EXTRA=$(node -e '
+            const extra = { reason: "candidate deployment", mode: "delta", releaseType: process.env.RELEASE_TYPE };
+            if (process.env.VERSION_TAG) extra.versionTag = process.env.VERSION_TAG;
+            console.log(JSON.stringify(extra));
+          ')
           node .pipeline/scripts/deploy/manifest.mjs --env "$ENV" --seq "$SEQ" --sha "$MERGED_SHA" \
             --delta-dir deploy-package --commits-file commit-messages.json \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --actor "$GITHUB_ACTOR" --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --extra '{"reason":"candidate deployment","mode":"delta"}' --out manifest.json
+            --extra "$EXTRA" --out manifest.json
           git tag -a "$TAG" "$MERGED_SHA" -m "Salesforce DevOps release: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           git push -q origin "$TAG"
           for attempt in 1 2 3; do
@@ -366,7 +386,12 @@ jobs:
             git worktree remove -f .meta
             echo "meta push race (attempt $attempt), retrying"
           done
+          if [ -n "$VERSION_TAG" ]; then
+            git tag -a "$VERSION_TAG" "$MERGED_SHA" -m "Production ${RELEASE_TYPE} release: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            git push -q origin "$VERSION_TAG"
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
       - name: Tidy completed work branch
         # Stage-to-stage promotion branches are long-lived environment records;
         # only disposable work/compatibility branches are removed.
