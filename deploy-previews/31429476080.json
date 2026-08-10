@@ -1,0 +1,19 @@
+{
+  "type": "deploy-preview",
+  "env": "uat",
+  "runId": "31429476080",
+  "sha": "a951fda8cc90981b5f2b36c4318ff9302a13ab1c",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Account.Membership_No__c"
+    ],
+    "Flow": [
+      "BGU_CreateLead"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-10T20:33:28.797Z"
+}
