@@ -21,6 +21,7 @@ pipeline:
     environment: production
     authMethod: jwt
     testLevel: RunLocalTests
+    quickDeploy: false
     gates:
       scannerMaxSeverity: 2
       minCoverage: 80
