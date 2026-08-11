@@ -419,7 +419,7 @@
             <label>Yes</label>
         </rules>
     </decisions>
-    <description>Updated</description>
+    <description>Demo</description>
     <environments>Offline</environments>
     <formulas>
         <description>Calculates a date that&apos;s 30 days after the flow is run to use for the opportunity close date. To use a different number of days for the opportunity close date, change 30 to the number of days in the future you want.</description>
