@@ -1,0 +1,19 @@
+{
+  "type": "deploy-preview",
+  "env": "uat",
+  "runId": "31495623302",
+  "sha": "1595ec1a4745a53f3bc6c5e1b76f6ced026816c9",
+  "mode": "delta",
+  "components": {
+    "CustomField": [
+      "Account.XYZ_Invoice__c"
+    ],
+    "Flow": [
+      "data_capture_2"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-11T13:28:39.716Z"
+}
