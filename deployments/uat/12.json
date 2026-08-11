@@ -1,0 +1,26 @@
+{
+  "type": "deploy",
+  "env": "uat",
+  "seq": 12,
+  "sha": "92f1090c4c7d65be574e22d277a2180da0ce2dbc",
+  "workItems": [
+    "PROJ-131"
+  ],
+  "components": {
+    "CustomField": [
+      "Account.XYZ_Invoice__c"
+    ],
+    "Flow": [
+      "data_capture_2"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "runUrl": "https://github.com/Xyraxel/sf-pipeline/actions/runs/31495623302",
+  "actor": "orbitops-poc-sfdcdevops[bot]",
+  "timestamp": "2026-08-11T13:29:21Z",
+  "reason": "candidate deployment",
+  "mode": "delta",
+  "releaseType": "none"
+}
