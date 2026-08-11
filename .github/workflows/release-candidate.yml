@@ -18,7 +18,7 @@ on:
         required: true
         type: string
       release_type:
-        description: "Optional Production version label"
+        description: "Production version label (required for Production releases)"
         required: false
         default: none
         type: choice

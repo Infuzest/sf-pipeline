@@ -111,6 +111,15 @@ jobs:
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
       - run: npm ci --prefix .pipeline
+      - name: Require an explicit Production release type
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
+        run: |
+          if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$RELEASE_TYPE" = "none" ]; then
+            echo "Production releases require a release type: bugfix, feature, or breaking. Nothing was deployed."
+            exit 1
+          fi
       - name: Confirm approval did not make the candidate stale
         env:
           PR_NUMBER: ${{ inputs.pr_number }}
