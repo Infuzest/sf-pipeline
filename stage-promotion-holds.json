@@ -2,16 +2,12 @@
   {
     "fromBranch": "uat",
     "toBranch": "main",
-    "fromSha": "522205f766c932c28379b144a0569ccb6cbae9dc",
-    "componentCount": 6,
+    "fromSha": "92f1090c4c7d65be574e22d277a2180da0ce2dbc",
+    "componentCount": 2,
     "workItems": [
-      "PROJ-125",
-      "POC-0",
-      "PROJ-127",
-      "PROJ-128",
-      "PROJ-129"
+      "PROJ-131"
     ],
-    "deferredAt": "2026-08-10T15:34:01.879Z",
+    "deferredAt": "2026-08-11T13:40:54.273Z",
     "deferredBy": "Xyraxel"
   }
 ]
