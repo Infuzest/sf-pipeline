@@ -7,5 +7,14 @@
     "connectedBy": "SalikPOC",
     "connectedAt": "2026-07-16T11:22:17.014Z",
     "instanceHost": "fun-platform-7050-dev-ed.scratch.my.salesforce.com"
+  },
+  {
+    "name": "Dev2",
+    "org": "DEV_DEV2",
+    "authMethod": "jwt",
+    "username": "salikmbhatti@gmail.com.bupauk.salik1",
+    "connectedBy": "admin",
+    "connectedAt": "2026-08-12T23:31:26.087Z",
+    "instanceHost": "bupauk--salik1.sandbox.my.salesforce.com"
   }
 ]
