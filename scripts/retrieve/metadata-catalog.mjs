@@ -27,6 +27,11 @@ function labelFor(type, member) {
   return member;
 }
 
+function lastModifiedDateFor(row) {
+  if (typeof row.lastModifiedDate !== "string" || !Number.isFinite(Date.parse(row.lastModifiedDate))) return undefined;
+  return new Date(row.lastModifiedDate).toISOString();
+}
+
 export function buildMetadataCatalog(resultsByType, sourceOrg, generatedAt = new Date().toISOString()) {
   const categoryGroups = new Map(CATEGORY_ORDER.map((category) => [category, new Map()]));
   for (const definition of CATALOG_TYPES) {
@@ -36,10 +41,12 @@ export function buildMetadataCatalog(resultsByType, sourceOrg, generatedAt = new
       const group = groupFor(definition.type, row.fullName);
       const groups = categoryGroups.get(definition.category);
       if (!groups.has(group)) groups.set(group, []);
+      const lastModifiedDate = lastModifiedDateFor(row);
       groups.get(group).push({
         type: definition.type,
         member: row.fullName,
         label: labelFor(definition.type, row.fullName),
+        ...(lastModifiedDate ? { lastModifiedDate } : {}),
       });
     }
   }
