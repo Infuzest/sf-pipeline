@@ -14,7 +14,7 @@ export const SUPPORTED_METADATA_TYPES = new Set([
 
 const MEMBER_PATTERN = /^[A-Za-z0-9_$.-]+$/;
 
-export function parseMetadataSelection(raw, limit = 100) {
+export function parseMetadataSelection(raw, limit = 500) {
   const tokens = String(raw ?? "")
     .split(/[\n,]+/)
     .map((value) => value.trim())
