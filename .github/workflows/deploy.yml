@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   pipeline:
-    uses: Xyraxel/sf-pipeline/.github/workflows/_deploy.yml@main
+    uses: Infuzest/sf-pipeline/.github/workflows/_deploy.yml@main
     with:
       reason: ${{ inputs.reason || '' }}
     secrets: inherit
