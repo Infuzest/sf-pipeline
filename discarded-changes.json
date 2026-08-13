@@ -1,5 +1,15 @@
 [
   {
+    "branch": "feature/PROJ-135-run-specified-tests-demo",
+    "title": "Run specified tests demo",
+    "workItems": [
+      "PROJ-135"
+    ],
+    "kind": "discarded",
+    "discardedAt": "2026-08-13T22:11:38.230Z",
+    "discardedBy": "admin"
+  },
+  {
     "branch": "feature/PROJ-134-sfdc-field",
     "title": "Sfdc field (PROJ-134)",
     "workItems": [
