@@ -1,5 +1,15 @@
 [
   {
+    "branch": "feature/PROJ-132-ticket",
+    "title": "Ticket",
+    "workItems": [
+      "PROJ-132"
+    ],
+    "kind": "discarded",
+    "discardedAt": "2026-08-13T15:30:41.835Z",
+    "discardedBy": "admin"
+  },
+  {
     "branch": "feature/PROJ-126-taxi-field",
     "title": "Taxi field",
     "workItems": [
