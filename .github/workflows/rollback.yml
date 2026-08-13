@@ -37,6 +37,7 @@ on:
 permissions:
   contents: write
   deployments: write
+  packages: read
   pull-requests: write # rollback revert lands via a merged PR when the branch is protected
 
 concurrency:
@@ -75,6 +76,14 @@ jobs:
     name: Rollback preview (${{ inputs.env }})
     needs: context
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
     steps:
       # Checkout stays on the workflow's own ref (main) so pipeline scripts are
       # always current; the env branch is only fetched as the revert-commit base.
@@ -82,8 +91,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with: { node-version: 22, cache: npm }
       - run: npm ci
       - uses: ./.github/actions/sf-auth
         with:
@@ -106,6 +113,14 @@ jobs:
     needs: context
     if: inputs.mode == 'execute'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
     environment: ${{ needs.context.outputs.environment }} # reviewer gate on execute
     steps:
       # Checkout stays on the workflow's own ref (main) so pipeline scripts are
@@ -114,8 +129,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with: { node-version: 22, cache: npm }
       - run: npm ci
       - uses: ./.github/actions/sf-auth
         with:

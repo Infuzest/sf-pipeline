@@ -30,6 +30,7 @@ on:
 permissions:
   contents: write # deploy tags + orbitops-meta branch
   deployments: write
+  packages: read # pull the private OrbitOps Salesforce toolbox image
   pull-requests: write # back-promotion PRs
 
 concurrency:

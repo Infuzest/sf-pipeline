@@ -50,8 +50,9 @@ test("resolveOrg finds dev orgs, stage orgs, and rejects unknown keys", async ()
   const dev = resolveOrg(cfg, "INT"); // registered dev org wins (has a friendly name)
   assert.equal(dev.authMethod, "sfdx-url");
   assert.match(dev.name, /Shared dev/);
-  const prod = resolveOrg(cfg, "PROD");
-  assert.equal(prod.authMethod, "jwt");
+  const finalStage = cfg.pipeline.at(-1);
+  const stageOrg = resolveOrg(cfg, finalStage.org);
+  assert.equal(stageOrg.authMethod, finalStage.authMethod);
   assert.throws(() => resolveOrg(cfg, "NOPE"), /Unknown org key "NOPE"/);
 });
 
@@ -65,14 +66,19 @@ test("resolveOrg consults the connected-orgs registry", async () => {
 });
 
 test("resolveOrg returns JWT identity for connected jwt entries", async () => {
-  const { loadConfig, resolveOrg } = await import("./pipeline.mjs");
+  const { loadConfig, resolveOrg, salesforceLoginUrl } = await import("./pipeline.mjs");
   const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
   const reg = [{
     name: "Dev1", org: "DEV_DEV1", authMethod: "jwt",
-    username: "test-user@example.com", instanceHost: "acme--dev.sandbox.my.salesforce.com",
+    orgType: "sandbox", username: "test-user@example.com",
   }];
   const o = resolveOrg(cfg, "DEV_DEV1", reg);
   assert.equal(o.authMethod, "jwt");
   assert.equal(o.username, "test-user@example.com");
-  assert.equal(o.instanceHost, "acme--dev.sandbox.my.salesforce.com");
+  assert.equal(o.loginUrl, "https://test.salesforce.com");
+  assert.equal(salesforceLoginUrl("production"), "https://login.salesforce.com");
+  assert.equal(
+    salesforceLoginUrl(undefined, "acme--legacy.sandbox.my.salesforce.com"),
+    "https://test.salesforce.com"
+  );
 });

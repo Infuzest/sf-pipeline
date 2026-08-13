@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  packages: read # pull the private OrbitOps Salesforce toolbox image
   pull-requests: write
   security-events: write
 

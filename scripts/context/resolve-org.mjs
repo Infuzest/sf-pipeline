@@ -31,6 +31,6 @@ setOutputs({
   auth_method: org.authMethod,
   display_name: org.name,
   username: org.username ?? "",
-  instance_url: org.instanceHost ? `https://${org.instanceHost}` : "",
+  instance_url: org.loginUrl ?? "",
 });
 console.log(`Org "${key}": ${org.name} (auth=${org.authMethod})`);
