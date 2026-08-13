@@ -24,5 +24,18 @@
     "connectionStatus": "ready",
     "instanceHost": "bupa--integrate.sandbox.my.salesforce.com",
     "username": "salik.bhatti@bupa.com.integrate"
+  },
+  {
+    "id": "a92c7ee5-f407-4a95-a8f4-05f67e2850ab",
+    "name": "Dev2",
+    "org": "DEV_DEV2",
+    "orgType": "sandbox",
+    "authMethod": "jwt",
+    "connectedBy": "admin",
+    "connectedAt": "2026-08-13T15:02:07.262Z",
+    "lastVerifiedAt": "2026-08-13T15:02:07.262Z",
+    "connectionStatus": "ready",
+    "instanceHost": "bupa--developer2.sandbox.my.salesforce.com",
+    "username": "salik.bhatti@bupa.com.developer2"
   }
 ]
