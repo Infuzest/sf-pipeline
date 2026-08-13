@@ -65,13 +65,21 @@ runs:
           exit 1
         }
 
-        PLUGINS=$(sf plugins 2>/dev/null)
-        grep -Eq '^sfdx-git-delta +${{ inputs.sgd-version }} ' <<< "$PLUGINS" || {
+        PLUGIN_VERSIONS=$(sf plugins --json 2>/dev/null | node -e '
+          const plugins = JSON.parse(require("fs").readFileSync(0, "utf8"));
+          for (const name of ["sfdx-git-delta", "@salesforce/plugin-code-analyzer"]) {
+            const plugin = plugins.find((candidate) => candidate.name === name);
+            console.log(`${name}=${plugin?.version ?? "missing"}`);
+          }
+        ')
+        grep -Fxq 'sfdx-git-delta=${{ inputs.sgd-version }}' <<< "$PLUGIN_VERSIONS" || {
           echo "Expected sfdx-git-delta ${{ inputs.sgd-version }} in the toolbox image" >&2
+          echo "$PLUGIN_VERSIONS" >&2
           exit 1
         }
-        grep -Eq '^code-analyzer +${{ inputs.code-analyzer-version }} ' <<< "$PLUGINS" || {
+        grep -Fxq '@salesforce/plugin-code-analyzer=${{ inputs.code-analyzer-version }}' <<< "$PLUGIN_VERSIONS" || {
           echo "Expected code-analyzer ${{ inputs.code-analyzer-version }} in the toolbox image" >&2
+          echo "$PLUGIN_VERSIONS" >&2
           exit 1
         }
         printf 'Using %s, sfdx-git-delta %s, code-analyzer %s\n' \
