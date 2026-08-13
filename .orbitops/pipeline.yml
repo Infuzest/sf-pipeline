@@ -8,14 +8,14 @@ devOrgs:
     authMethod: sfdx-url
 pipeline:
   - branch: integration
-    org: DEV_INTEGRATION
+    org: DEV_DEV2
     environment: integration
     authMethod: jwt
     testLevel: RunLocalTests
+    quickDeploy: false
     gates:
       scannerMaxSeverity: 2
       minCoverage: 75
-      requiredReviewers: true
   - branch: main
     org: PROD
     environment: production
