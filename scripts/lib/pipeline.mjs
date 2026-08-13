@@ -14,6 +14,18 @@ export function loadPipeline(path = ".orbitops/pipeline.yml") {
 }
 
 /**
+ * JWT authentication starts at Salesforce's stable login service. The token
+ * exchange returns the org's current instance URL, so sandbox hostnames do not
+ * need to be maintained as credentials (especially after a refresh).
+ */
+export function salesforceLoginUrl(orgType, instanceHost = "") {
+  if (orgType === "sandbox") return "https://test.salesforce.com";
+  if (orgType === "production") return "https://login.salesforce.com";
+  if (instanceHost.includes(".sandbox.")) return "https://test.salesforce.com";
+  return instanceHost ? "https://login.salesforce.com" : "";
+}
+
+/**
  * Resolve any org key to its auth method + display name. Sources, in order:
  * devOrgs (pipeline.yml), UI-connected orgs (registry from the orbitops-meta
  * branch, passed in), pipeline stage orgs.
@@ -30,7 +42,8 @@ export function resolveOrg(config, orgKey, connectedOrgs = []) {
       authMethod: connected.authMethod ?? "sfdx-url",
       name: connected.name,
       username: connected.username,
-      instanceHost: connected.instanceHost,
+      orgType: connected.orgType,
+      loginUrl: salesforceLoginUrl(connected.orgType, connected.instanceHost),
     };
   }
   const stage = config.pipeline.find((s) => s.org === orgKey);
