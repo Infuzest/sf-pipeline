@@ -77,6 +77,14 @@ jobs:
       - run: npm ci --prefix .pipeline
       - uses: ./.pipeline/.github/actions/sf-auth
         with: { auth-method: none }
+      # A local composite action loaded from the nested tooling checkout can
+      # leave container jobs resolving Git from that nested repository. Restore
+      # the PR checkout without cleaning, so .pipeline remains available.
+      - name: Restore pull request repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          clean: false
       - name: Compute delta package
         working-directory: ${{ github.workspace }}
         run: |
@@ -149,6 +157,11 @@ jobs:
       - run: npm ci --prefix .pipeline
       - uses: ./.pipeline/.github/actions/sf-auth
         with: { auth-method: none }
+      - name: Restore pull request repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          clean: false
       - name: Collect changed files
         id: files
         working-directory: ${{ github.workspace }}
