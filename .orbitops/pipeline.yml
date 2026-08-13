@@ -17,7 +17,7 @@ pipeline:
       scannerMaxSeverity: 2
       minCoverage: 75
   - branch: main
-    org: PROD
+    org: DEV_INTEGRATION
     environment: production
     authMethod: jwt
     testLevel: RunLocalTests
