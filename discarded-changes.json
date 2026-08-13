@@ -1,5 +1,15 @@
 [
   {
+    "branch": "feature/PROJ-133-sfdc-testfield1",
+    "title": "Sfdc testfield1 (PROJ-133)",
+    "workItems": [
+      "PROJ-133"
+    ],
+    "kind": "cancelled",
+    "discardedAt": "2026-08-13T18:05:22.170Z",
+    "discardedBy": "admin"
+  },
+  {
     "branch": "feature/PROJ-132-ticket",
     "title": "Ticket",
     "workItems": [
