@@ -7,11 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: "tracked, catalog, or selected"
+        description: "tracked, recent, catalog, or selected"
         required: true
         default: tracked
         type: choice
-        options: [tracked, catalog, selected]
+        options: [tracked, recent, catalog, selected]
+      modified_days:
+        description: "For recent pulls, include metadata modified within this many days"
+        required: false
+        default: "2"
+        type: choice
+        options: ["1", "2", "3", "4", "5", "6", "7", "10"]
       work_branch:
         description: "Work-item branch to commit retrieved changes to (feature/…)"
         required: false
@@ -102,6 +108,10 @@ jobs:
           fi
           if [ "${{ inputs.operation }}" = "selected" ]; then
             node scripts/retrieve/metadata-selection.mjs --out retrieve-package.xml --json tracked.json
+          elif [ "${{ inputs.operation }}" = "recent" ]; then
+            node scripts/retrieve/metadata-catalog.mjs --org source-org --out metadata-catalog.json
+            node scripts/retrieve/recent-metadata.mjs --catalog metadata-catalog.json \
+              --days "${{ inputs.modified_days }}" --out retrieve-package.xml --json tracked.json
           else
             node scripts/retrieve/source-members.mjs --org source-org \
               --out retrieve-package.xml --json tracked.json
@@ -174,3 +184,7 @@ jobs:
       - name: Nothing tracked
         if: inputs.operation == 'tracked' && steps.manifest.outputs.count == '0'
         run: echo "No tracked changes found in the ${{ inputs.source_org }} org." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nothing changed recently
+        if: inputs.operation == 'recent' && steps.manifest.outputs.count == '0'
+        run: echo "No supported metadata changed in the last ${{ inputs.modified_days }} day(s)." >> "$GITHUB_STEP_SUMMARY"
