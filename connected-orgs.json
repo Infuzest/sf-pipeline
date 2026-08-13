@@ -1,11 +1,1 @@
-[
-  {
-    "name": "Dev2",
-    "org": "DEV_DEV2",
-    "authMethod": "jwt",
-    "username": "salikmbhatti@gmail.com.bupauk.salik1",
-    "connectedBy": "admin",
-    "connectedAt": "2026-08-12T23:45:03.085Z",
-    "instanceHost": "bupauk--salik1.sandbox.my.salesforce.com"
-  }
-]
+[]
