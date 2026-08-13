@@ -36,8 +36,8 @@ jobs:
       org: ${{ steps.stage.outputs.org }}
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
-      test_level: ${{ steps.stage.outputs.test_level }}
-      test_classes: ${{ steps.stage.outputs.test_classes }}
+      test_level: ${{ steps.test-plan.outputs.test_level }}
+      test_classes: ${{ steps.test-plan.outputs.test_classes }}
       quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
       is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
     steps:
@@ -70,6 +70,16 @@ jobs:
             console.log(`head_sha=${pr.head.sha}`);
             console.log(`head_ref=${pr.head.ref}`);
           ' >> "$GITHUB_OUTPUT"
+      - name: Resolve this promotion's Apex test plan
+        id: test-plan
+        working-directory: .pipeline
+        run: |
+          cp ../pr.json pr.json
+          node -e 'const fs=require("fs"); const pr=JSON.parse(fs.readFileSync("pr.json","utf8")); fs.writeFileSync("pr-body.md", pr.body ?? "")'
+          node scripts/context/request-test-plan.mjs --body pr-body.md \
+            --fallback-level '${{ steps.stage.outputs.test_level }}' \
+            --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
+            --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' }}'
       - name: Build the candidate locally and detect conflicts
         id: candidate
         env:

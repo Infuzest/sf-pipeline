@@ -40,8 +40,9 @@ setOutputs({
   auth_method: stage.authMethod,
   test_level: stage.testLevel,
   test_classes: JSON.stringify(stage.testClasses ?? []),
+  policy_owner: stage.policy?.owner ?? (stages[0]?.branch === branch ? "developer" : "central"),
   quick_deploy: String(stage.quickDeploy !== false),
   min_coverage: stage.gates.minCoverage,
   scanner_max_severity: stage.gates.scannerMaxSeverity,
 });
-console.log(`Stage for "${branch}": org=${stage.org} environment=${stage.environment} auth=${stage.authMethod} tests=${stage.testLevel}${stage.testLevel === "RunSpecifiedTests" ? ` (${stage.testClasses.length} specified)` : ""}`);
+console.log(`Stage for "${branch}": org=${stage.org} environment=${stage.environment} auth=${stage.authMethod} tests=${stage.testLevel} policy=${stage.policy?.owner ?? (stages[0]?.branch === branch ? "developer" : "central")}${stage.testLevel === "RunSpecifiedTests" ? ` (${stage.testClasses.length} specified)` : ""}`);

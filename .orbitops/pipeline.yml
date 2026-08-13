@@ -11,9 +11,9 @@ pipeline:
     org: DEV_DEV2
     environment: integration
     authMethod: jwt
-    testLevel: RunSpecifiedTests
-    testClasses:
-      - OrbitOpsRunSpecifiedTestsDemo
+    testLevel: Conditional
+    policy:
+      owner: developer
     quickDeploy: false
     gates:
       scannerMaxSeverity: 2
@@ -23,6 +23,8 @@ pipeline:
     environment: production
     authMethod: jwt
     testLevel: RunLocalTests
+    policy:
+      owner: central
     quickDeploy: false
     gates:
       scannerMaxSeverity: 2

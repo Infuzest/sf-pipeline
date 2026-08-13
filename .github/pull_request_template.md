@@ -9,6 +9,14 @@
 
 Work-Items:
 
+## Apex test plan for this change
+
+<!-- Each promotion can choose its own test plan. For RunSpecifiedTests, add
+     comma-separated Apex class names or Class.testMethod values below. -->
+
+OrbitOps-Test-Level: Conditional
+OrbitOps-Test-Classes:
+
 ## Checklist
 
 - [ ] I tested this change in my development org/sandbox

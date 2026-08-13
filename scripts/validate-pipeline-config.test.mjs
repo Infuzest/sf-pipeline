@@ -26,17 +26,14 @@ function validate(yaml) {
   return result;
 }
 
-test("pipeline config accepts RunSpecifiedTests with safe test classes", () => {
+test("pipeline config rejects RunSpecifiedTests because classes belong to each request", () => {
   const result = validate(base("    testLevel: RunSpecifiedTests\n    testClasses:\n      - AccountServiceTest\n      - OpportunityTest.createsOpportunity"));
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must be equal to one of the allowed values|additional properties/);
 });
 
-test("pipeline config requires classes only for RunSpecifiedTests", () => {
-  const missing = validate(base("    testLevel: RunSpecifiedTests"));
-  assert.equal(missing.status, 1);
-  assert.match(missing.stderr, /add at least one Apex test class/);
-
+test("pipeline config rejects specified classes on shared stages", () => {
   const misplaced = validate(base("    testLevel: Conditional\n    testClasses:\n      - AccountServiceTest"));
   assert.equal(misplaced.status, 1);
-  assert.match(misplaced.stderr, /only be used with RunSpecifiedTests/);
+  assert.match(misplaced.stderr, /additional properties/);
 });

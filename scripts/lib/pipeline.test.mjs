@@ -36,21 +36,6 @@ test("testLevel defaults to RunLocalTests", () => {
   assert.equal(resolveStage(stages, "main").testLevel, "RunLocalTests");
 });
 
-test("RunSpecifiedTests preserves its reviewed test-class allow-list", () => {
-  const stages = [{
-    branch: "integration",
-    org: "INT",
-    environment: "integration",
-    authMethod: "jwt",
-    testLevel: "RunSpecifiedTests",
-    testClasses: ["AccountServiceTest", "OpportunityTest.createsOpportunity"],
-    gates: {},
-  }];
-  const resolved = resolveStage(stages, "integration");
-  assert.equal(resolved.testLevel, "RunSpecifiedTests");
-  assert.deepEqual(resolved.testClasses, ["AccountServiceTest", "OpportunityTest.createsOpportunity"]);
-});
-
 test("quickDeploy defaults to true and can be disabled per stage", () => {
   const defaults = [{ branch: "main", org: "PROD", environment: "production", authMethod: "jwt", gates: {} }];
   assert.equal(resolveStage(defaults, "main").quickDeploy, true);
