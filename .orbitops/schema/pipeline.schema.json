@@ -37,25 +37,25 @@
             "description": "How CI authenticates to this stage's org (see .github/actions/sf-auth)"
           },
           "testLevel": {
-            "enum": ["NoTestRun", "RunLocalTests", "RunSpecifiedTests", "RunRelevantTests", "Conditional"],
+            "enum": ["NoTestRun", "RunLocalTests", "RunRelevantTests", "Conditional"],
             "description": "Apex test level for validation/deploy; Conditional = NoTestRun unless the delta contains Apex",
             "default": "RunLocalTests"
-          },
-          "testClasses": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 50,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)?$"
-            },
-            "description": "Apex test classes or Class.testMethod entries used with RunSpecifiedTests"
           },
           "quickDeploy": {
             "type": "boolean",
             "description": "Use a matching successful Salesforce validation for Quick Deploy. Set false to always run a normal deployment.",
             "default": true
+          },
+          "policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["owner"],
+            "properties": {
+              "owner": {
+                "enum": ["developer", "central"],
+                "description": "Developer stages accept per-request execution choices; central stages enforce their shared stage policy"
+              }
+            }
           },
           "branch": {
             "type": "string",

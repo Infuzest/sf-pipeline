@@ -30,8 +30,8 @@ jobs:
       # client id and private key are shared repository secrets.
       username: ${{ steps.org.outputs.username }}
       instance_url: ${{ steps.org.outputs.instance_url }}
-      test_level: ${{ steps.stage.outputs.test_level }}
-      test_classes: ${{ steps.stage.outputs.test_classes }}
+      test_level: ${{ steps.test-plan.outputs.test_level }}
+      test_classes: ${{ steps.test-plan.outputs.test_classes }}
       min_coverage: ${{ steps.stage.outputs.min_coverage }}
       scanner_max_severity: ${{ steps.stage.outputs.scanner_max_severity }}
     steps:
@@ -43,6 +43,17 @@ jobs:
       - id: stage
         working-directory: .pipeline
         run: node scripts/context/resolve-stage.mjs "${{ github.base_ref }}" --optional
+      - id: test-plan
+        if: steps.stage.outputs.is_stage == 'true'
+        working-directory: .pipeline
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$PR_BODY" > pr-body.md
+          node scripts/context/request-test-plan.mjs --body pr-body.md \
+            --fallback-level '${{ steps.stage.outputs.test_level }}' \
+            --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
+            --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' }}'
       - id: org
         if: steps.stage.outputs.is_stage == 'true'
         working-directory: .pipeline
