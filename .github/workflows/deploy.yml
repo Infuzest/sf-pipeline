@@ -1,10 +1,10 @@
-# Salesforce DevOps deploy — THIN CALLER. Do not add logic here.
+# OrbitOps deploy — THIN CALLER. Do not add logic here.
 #
 # All deploy logic lives in _deploy.yml on MAIN (referenced with @main below,
 # deliberately a moving ref — that's the point): fixes merged to main apply to
 # every stage branch immediately. This stub is installed once on each stage
 # branch and never needs to change again.
-name: Salesforce DevOps Deploy
+name: OrbitOps Deploy
 
 on:
   push:
@@ -20,6 +20,7 @@ on:
 permissions:
   contents: write # deploy tags + orbitops-meta branch
   deployments: write
+  packages: read # pull the private OrbitOps Salesforce toolbox image
   pull-requests: write # back-promotion PRs
 
 concurrency:
