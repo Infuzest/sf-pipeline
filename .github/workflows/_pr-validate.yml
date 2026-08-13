@@ -59,7 +59,7 @@ jobs:
     if: needs.context.outputs.is_stage == 'true'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -130,7 +130,7 @@ jobs:
     if: needs.context.outputs.is_stage == 'true'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -203,7 +203,7 @@ jobs:
     if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
