@@ -18,7 +18,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/xyraxel/orbitops-sf-toolbox
-  VERSION_TAG: 2.142.7-sgd6.45.1-ca5.14.0
+  VERSION_TAG: 2.142.7-sgd6.45.1-ca5.14.0-r2
 
 jobs:
   build:
@@ -57,7 +57,7 @@ jobs:
           docker run --rm "${IMAGE}:${VERSION_TAG}" bash -lc '
             set -euo pipefail
             test "$(sf version --json | node -pe '\''JSON.parse(require("fs").readFileSync(0,"utf8")).cliVersion'\'')" = "@salesforce/cli/2.142.7"
-            sf sgd --help >/dev/null
+            HOME=/github/home sf sgd --help >/dev/null
             sf code-analyzer --help >/dev/null
             git --version
             gh --version | head -1
