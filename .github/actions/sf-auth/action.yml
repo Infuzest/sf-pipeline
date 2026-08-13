@@ -53,6 +53,12 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        # actions/checkout records safe.directory under a temporary HOME. Job
+        # containers restore /github/home for later shells, so persist trust in
+        # the mounted workspace before any Git-based Salesforce tooling runs.
+        if [ -n "${GITHUB_WORKSPACE:-}" ]; then
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        fi
         command -v sf >/dev/null || {
           echo "Salesforce CLI is missing. Run this job with the OrbitOps Salesforce toolbox image." >&2
           exit 1
