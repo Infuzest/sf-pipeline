@@ -1,10 +1,10 @@
-# Salesforce DevOps PR validation — THIN CALLER. Do not add logic here.
+# OrbitOps PR validation — THIN CALLER. Do not add logic here.
 #
 # All validation logic lives in _pr-validate.yml on MAIN (referenced with
 # @main below, deliberately a moving ref — that's the point): fixes merged to
 # main apply to every stage branch immediately. This stub is installed once on
 # each stage branch and never needs to change again.
-name: Salesforce DevOps
+name: OrbitOps
 
 on:
   pull_request:
@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  packages: read # pull the private OrbitOps Salesforce toolbox image
   pull-requests: write
   security-events: write
 
