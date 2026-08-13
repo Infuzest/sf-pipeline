@@ -1,7 +1,7 @@
-name: "Salesforce CLI setup + org auth"
+name: "Salesforce toolbox check + org auth"
 description: >
-  Installs Salesforce CLI v2 with the sfdx-git-delta and code-analyzer plugins
-  (pinned versions), then authenticates to an org. Two auth methods:
+  Verifies the pinned Salesforce CLI, sfdx-git-delta, and code-analyzer versions
+  supplied by the OrbitOps toolbox image, then authenticates to an org. Two auth methods:
   "jwt" (connected app + certificate — used for PROD) and
   "sfdx-url" (SFDX auth URL — used for scratch-org stages, whose orgs cannot
   create connected apps since Spring '26). Used by every Salesforce DevOps workflow
@@ -9,7 +9,7 @@ description: >
 
 inputs:
   auth-method:
-    description: '"jwt", "sfdx-url", or "none" (install CLI + plugins only, no org auth)'
+    description: '"jwt", "sfdx-url", or "none" (verify tools only, no org auth)'
     required: false
     default: "jwt"
   # jwt method
@@ -49,16 +49,33 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Salesforce CLI and plugins (cached)
+    - name: Verify preinstalled Salesforce tools
       shell: bash
       run: |
         set -euo pipefail
-        if ! command -v sf >/dev/null || [ "$(sf version --json | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).cliVersion' 2>/dev/null)" != "@salesforce/cli/${{ inputs.cli-version }}" ]; then
-          npm install --global "@salesforce/cli@${{ inputs.cli-version }}"
-        fi
-        echo y | sf plugins install "sfdx-git-delta@${{ inputs.sgd-version }}"
-        echo y | sf plugins install "@salesforce/plugin-code-analyzer@${{ inputs.code-analyzer-version }}"
-        sf version --verbose
+        command -v sf >/dev/null || {
+          echo "Salesforce CLI is missing. Run this job with the OrbitOps Salesforce toolbox image." >&2
+          exit 1
+        }
+
+        ACTUAL_CLI=$(sf version --json 2>/dev/null \
+          | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).cliVersion')
+        [ "$ACTUAL_CLI" = "@salesforce/cli/${{ inputs.cli-version }}" ] || {
+          echo "Expected @salesforce/cli/${{ inputs.cli-version }}, found $ACTUAL_CLI" >&2
+          exit 1
+        }
+
+        PLUGINS=$(sf plugins 2>/dev/null)
+        grep -Eq '^sfdx-git-delta +${{ inputs.sgd-version }} ' <<< "$PLUGINS" || {
+          echo "Expected sfdx-git-delta ${{ inputs.sgd-version }} in the toolbox image" >&2
+          exit 1
+        }
+        grep -Eq '^code-analyzer +${{ inputs.code-analyzer-version }} ' <<< "$PLUGINS" || {
+          echo "Expected code-analyzer ${{ inputs.code-analyzer-version }} in the toolbox image" >&2
+          exit 1
+        }
+        printf 'Using %s, sfdx-git-delta %s, code-analyzer %s\n' \
+          "$ACTUAL_CLI" "${{ inputs.sgd-version }}" "${{ inputs.code-analyzer-version }}"
 
     - name: Authenticate
       shell: bash
@@ -97,7 +114,7 @@ runs:
               --set-default
             ;;
           none)
-            echo "CLI + plugins installed; skipping org auth (auth-method: none)"
+            echo "Salesforce tools verified; skipping org auth (auth-method: none)"
             ;;
           *)
             echo "Unknown auth-method: $SF_AUTH_METHOD" >&2; exit 1

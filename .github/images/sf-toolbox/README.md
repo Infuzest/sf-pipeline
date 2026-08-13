@@ -15,3 +15,8 @@ change reaches `main`, it publishes these GHCR tags:
 
 No credentials or Salesforce authorization data are stored in the image.
 Workflows authenticate after the job container starts.
+
+Salesforce-dependent jobs use the versioned tag as their job container and
+grant the built-in `GITHUB_TOKEN` `packages: read`. The `sf-auth` action only
+checks these pinned versions and authenticates; it never installs tools during
+a deployment or metadata retrieval.

@@ -97,6 +97,14 @@ jobs:
     name: Deploy candidate to ${{ needs.prepare.outputs.org }}
     needs: prepare
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
     # GitHub Environment reviewers approve the actual candidate deployment.
     # This is deliberately before the merge; approval never changes a branch.
     environment: ${{ needs.prepare.outputs.environment }}
@@ -108,8 +116,6 @@ jobs:
           fetch-tags: true
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
       - run: npm ci --prefix .pipeline
       - name: Confirm approval did not make the candidate stale
         env:

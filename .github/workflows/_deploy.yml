@@ -35,6 +35,14 @@ jobs:
   context:
     name: Resolve stage
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
     outputs:
       is_stage: ${{ steps.stage.outputs.is_stage }}
       is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
@@ -49,8 +57,6 @@ jobs:
         with: { fetch-depth: 0, fetch-tags: true }
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
       - run: npm ci --prefix .pipeline
       - id: stage
         working-directory: .pipeline
@@ -105,14 +111,20 @@ jobs:
     needs: context
     if: needs.context.outputs.is_stage == 'true' && needs.context.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
     environment: ${{ needs.context.outputs.environment }} # required reviewers gate uat/production
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: { fetch-depth: 0, fetch-tags: true }
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
       - run: npm ci --prefix .pipeline
       - uses: ./.pipeline/.github/actions/sf-auth
         with:
