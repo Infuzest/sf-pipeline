@@ -7,9 +7,9 @@ devOrgs:
     org: INT
     authMethod: sfdx-url
 pipeline:
-  - branch: uat
-    org: UAT
-    environment: uat
+  - branch: integration
+    org: DEV_INTEGRATION
+    environment: integration
     authMethod: jwt
     testLevel: RunLocalTests
     gates:
