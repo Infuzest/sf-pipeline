@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Assigned_Developer__c</fullName>
+    <label>Assigned Developer</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Akshay Aringale</fullName>
+                <default>false</default>
+                <label>Akshay Aringale</label>
+            </value>
+            <value>
+                <fullName>Alex Matheakis</fullName>
+                <default>false</default>
+                <label>Alex Matheakis</label>
+            </value>
+            <value>
+                <fullName>Christopher Baily</fullName>
+                <default>false</default>
+                <label>Christopher Baily</label>
+            </value>
+            <value>
+                <fullName>David Johnston</fullName>
+                <default>false</default>
+                <label>David Johnston</label>
+            </value>
+            <value>
+                <fullName>Harish Patil</fullName>
+                <default>false</default>
+                <label>Harish Patil</label>
+            </value>
+            <value>
+                <fullName>Lavanya Muralidharan</fullName>
+                <default>false</default>
+                <label>Lavanya Muralidharan</label>
+            </value>
+            <value>
+                <fullName>Mahender Reddy</fullName>
+                <default>false</default>
+                <label>Mahender Reddy</label>
+            </value>
+            <value>
+                <fullName>Prashanth Srinivasa</fullName>
+                <default>false</default>
+                <label>Prashanth Srinivasa</label>
+            </value>
+            <value>
+                <fullName>Preeti Biradar</fullName>
+                <default>false</default>
+                <label>Preeti Biradar</label>
+            </value>
+            <value>
+                <fullName>Rohan Kalyankar</fullName>
+                <default>false</default>
+                <label>Rohan Kalyankar</label>
+            </value>
+            <value>
+                <fullName>Sheethal M</fullName>
+                <default>false</default>
+                <label>Sheethal M</label>
+            </value>
+            <value>
+                <fullName>Somesh Koluramath</fullName>
+                <default>false</default>
+                <label>Somesh Koluramath</label>
+            </value>
+            <value>
+                <fullName>Alan Wragg</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Alan Wragg</label>
+            </value>
+            <value>
+                <fullName>Andrew Chapman</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Andrew Chapman</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
