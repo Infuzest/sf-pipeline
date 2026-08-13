@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "name": "Dev1",
+    "org": "DEV_DEV1",
+    "authMethod": "jwt",
+    "username": "salik.bhatti@bupa.com.developer1",
+    "connectedBy": "admin",
+    "connectedAt": "2026-08-13T12:14:43.662Z",
+    "instanceHost": "bupa--developer1.sandbox.my.salesforce.com"
+  }
+]
