@@ -1,5 +1,15 @@
 [
   {
+    "branch": "feature/PROJ-137-sfdc-field",
+    "title": "Sfdc field (PROJ-137)",
+    "workItems": [
+      "PROJ-137"
+    ],
+    "kind": "cancelled",
+    "discardedAt": "2026-08-13T22:44:50.236Z",
+    "discardedBy": "admin"
+  },
+  {
     "branch": "feature/PROJ-136-sfdc-field",
     "title": "Sfdc field (PROJ-136)",
     "workItems": [
