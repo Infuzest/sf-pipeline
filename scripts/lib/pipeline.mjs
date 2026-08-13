@@ -6,7 +6,11 @@ export function loadConfig(path = ".orbitops/pipeline.yml") {
   if (!cfg || !Array.isArray(cfg.pipeline)) {
     throw new Error(`${path} has no "pipeline" array — run npm run config:validate`);
   }
-  return { pipeline: cfg.pipeline, devOrgs: cfg.devOrgs ?? [] };
+  return {
+    pipeline: cfg.pipeline,
+    devOrgs: cfg.devOrgs ?? [],
+    workItems: { required: false, ...(cfg.workItems ?? {}) },
+  };
 }
 
 export function loadPipeline(path = ".orbitops/pipeline.yml") {

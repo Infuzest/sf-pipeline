@@ -34,6 +34,7 @@ jobs:
       test_classes: ${{ steps.test-plan.outputs.test_classes }}
       min_coverage: ${{ steps.stage.outputs.min_coverage }}
       scanner_max_severity: ${{ steps.stage.outputs.scanner_max_severity }}
+      work_items_required: ${{ steps.stage.outputs.work_items_required }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: { ref: main, path: .pipeline }
@@ -117,7 +118,7 @@ jobs:
   work-items:
     name: Work items
     needs: context
-    if: needs.context.outputs.is_stage == 'true'
+    if: needs.context.outputs.is_stage == 'true' && needs.context.outputs.work_items_required == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

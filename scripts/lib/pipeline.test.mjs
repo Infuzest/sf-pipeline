@@ -44,6 +44,12 @@ test("quickDeploy defaults to true and can be disabled per stage", () => {
   assert.equal(resolveStage(disabled, "main").quickDeploy, false);
 });
 
+test("work-item tagging is opt-in", async () => {
+  const { loadConfig } = await import("./pipeline.mjs");
+  const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  assert.equal(cfg.workItems.required, false);
+});
+
 test("resolveOrg finds dev orgs, stage orgs, and rejects unknown keys", async () => {
   const { loadConfig, resolveOrg } = await import("./pipeline.mjs");
   const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);

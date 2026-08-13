@@ -8,7 +8,7 @@
  * This keeps the branch topology defined ONLY by .orbitops/pipeline.yml —
  * adding or removing a stage never requires editing workflow trigger lists.
  */
-import { loadPipeline, resolveStage } from "../lib/pipeline.mjs";
+import { loadConfig, resolveStage } from "../lib/pipeline.mjs";
 import { setOutputs } from "../lib/output.mjs";
 
 const optional = process.argv.includes("--optional");
@@ -18,7 +18,8 @@ if (!branch) {
   process.exit(2);
 }
 
-const stages = loadPipeline();
+const config = loadConfig();
+const stages = config.pipeline;
 let stage;
 try {
   stage = resolveStage(stages, branch);
@@ -44,5 +45,6 @@ setOutputs({
   quick_deploy: String(stage.quickDeploy !== false),
   min_coverage: stage.gates.minCoverage,
   scanner_max_severity: stage.gates.scannerMaxSeverity,
+  work_items_required: String(config.workItems.required === true),
 });
 console.log(`Stage for "${branch}": org=${stage.org} environment=${stage.environment} auth=${stage.authMethod} tests=${stage.testLevel} policy=${stage.policy?.owner ?? (stages[0]?.branch === branch ? "developer" : "central")}${stage.testLevel === "RunSpecifiedTests" ? ` (${stage.testClasses.length} specified)` : ""}`);

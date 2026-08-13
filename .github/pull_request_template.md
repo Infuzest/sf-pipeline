@@ -4,8 +4,8 @@
 
 ## Work Items
 
-<!-- Required. List every Jira issue (e.g. PROJ-123) or Azure DevOps work item (e.g. AB#456)
-     this change belongs to. The pipeline blocks promotions without a valid work-item ID. -->
+<!-- Optional unless workItems.required is enabled for this project. List Jira
+     issues (e.g. PROJ-123) or Azure DevOps work items (e.g. AB#456) here. -->
 
 Work-Items:
 

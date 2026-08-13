@@ -6,6 +6,18 @@
   "additionalProperties": false,
   "required": ["pipeline"],
   "properties": {
+    "workItems": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Work-item traceability policy. Omitted or false keeps Jira/Azure DevOps tagging optional.",
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require every promotion PR to carry a Jira or Azure DevOps work-item reference"
+        }
+      }
+    },
     "devOrgs": {
       "type": "array",
       "description": "Orgs builders can pull changes from (any sandbox/scratch/dev org)",

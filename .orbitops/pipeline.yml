@@ -6,6 +6,12 @@ devOrgs:
   - name: Shared dev org (also INT)
     org: INT
     authMethod: sfdx-url
+
+# Jira/Azure DevOps traceability is optional for the POC. Turn this on only
+# after a tracker has been configured for the project.
+workItems:
+  required: false
+
 pipeline:
   - branch: integration
     org: DEV_DEV2
