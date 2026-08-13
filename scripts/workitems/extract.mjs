@@ -45,9 +45,10 @@ export function extractWorkItems({ title, branch, commitMessages = [] }) {
 export const NO_WORK_ITEM_MESSAGE = [
   "No work item is attached to this change.",
   "",
-  "Add a work-item ID to the PR title or the Work-Items section of the description, e.g.:",
-  "  - Jira:        PROJ-123",
-  "  - Azure DevOps: AB#456",
+  "Add a work-item ID to the PR title, branch name, or a commit footer, e.g.:",
+  "  - PR title:      Add discount field (PROJ-123)",
+  "  - Branch:        feature/PROJ-123-discount-field",
+  "  - Commit footer: Work-Items: PROJ-123, AB#456",
   "",
   "Every change must be traceable to a work item before it can be promoted.",
 ].join("\n");
