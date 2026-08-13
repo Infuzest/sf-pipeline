@@ -1,0 +1,12 @@
+[
+  {
+    "branch": "feature/PROJ-126-taxi-field",
+    "title": "Taxi field",
+    "workItems": [
+      "PROJ-126"
+    ],
+    "kind": "discarded",
+    "discardedAt": "2026-08-13T15:30:07.977Z",
+    "discardedBy": "admin"
+  }
+]
