@@ -29,8 +29,11 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
       - run: npm ci
+      - name: Resolve external reporting policy
+        id: reporting
+        run: node scripts/context/resolve-reporting.mjs
       - uses: ./.github/actions/sf-auth
         with: { auth-method: none }
       - name: Scan full workspace
@@ -40,14 +43,15 @@ jobs:
           HAS_RUNS=$(node -pe 'JSON.parse(require("fs").readFileSync("results.sarif","utf8")).runs?.length > 0' 2>/dev/null || echo false)
           echo "has_runs=$HAS_RUNS" >> "$GITHUB_OUTPUT"
       - name: Upload SARIF to code scanning
-        if: steps.scan.outputs.has_runs == 'true'
-        uses: github/codeql-action/upload-sarif@df409f7d9260372bd5f19e5b04e83cb3c43714ae # v3.27.9
+        if: steps.scan.outputs.has_runs == 'true' && steps.reporting.outputs.publish_sarif == 'true'
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@988661ebb5e81487b3fb31b2185d2856c0a10679 # v4 (Node 24)
         with:
           sarif_file: results.sarif
           category: orbitops-full
       - name: Update burn-down issue
         run: node scripts/scanner/burndown.mjs results.sarif --issue
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: full-scan-sarif
           path: results.sarif

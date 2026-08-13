@@ -12,6 +12,12 @@ devOrgs:
 workItems:
   required: false
 
+# Findings are still enforced by the OrbitOps scanner gate. Publishing the
+# SARIF report into GitHub code scanning is optional because it requires the
+# repository to have that GitHub feature available.
+codeScanning:
+  publishSarif: false
+
 pipeline:
   - branch: integration
     org: DEV_DEV2

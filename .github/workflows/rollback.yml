@@ -57,8 +57,8 @@ jobs:
       auth_method: ${{ steps.stage.outputs.auth_method }}
       branch: ${{ steps.map.outputs.branch }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - id: map
@@ -87,7 +87,7 @@ jobs:
     steps:
       # Checkout stays on the workflow's own ref (main) so pipeline scripts are
       # always current; the env branch is only fetched as the revert-commit base.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -125,7 +125,7 @@ jobs:
     steps:
       # Checkout stays on the workflow's own ref (main) so pipeline scripts are
       # always current; the env branch is only fetched as the revert-commit base.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with:
           fetch-depth: 0
           fetch-tags: true

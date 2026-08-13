@@ -10,6 +10,7 @@ export function loadConfig(path = ".orbitops/pipeline.yml") {
     pipeline: cfg.pipeline,
     devOrgs: cfg.devOrgs ?? [],
     workItems: { required: false, ...(cfg.workItems ?? {}) },
+    codeScanning: { publishSarif: false, ...(cfg.codeScanning ?? {}) },
   };
 }
 
