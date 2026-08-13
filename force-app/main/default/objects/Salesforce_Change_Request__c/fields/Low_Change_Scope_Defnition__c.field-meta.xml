@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Low_Change_Scope_Defnition__c</fullName>
+    <defaultValue>&quot;Field Changes | Help Text | Value Sets | Page / Lightning Layouts | Report / Dashboard | Profiles/ Permission Sets/ Roles | Validation Rules | List Views | Mandatory Fields | Email Notifications | Audit Tracking | Custom Labels&quot;</defaultValue>
+    <inlineHelpText>Change components categorised as low</inlineHelpText>
+    <label>Low Change Scope Defnition</label>
+    <length>1000</length>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>4</visibleLines>
+</CustomField>

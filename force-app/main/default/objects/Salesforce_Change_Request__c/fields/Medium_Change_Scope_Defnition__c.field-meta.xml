@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Medium_Change_Scope_Defnition__c</fullName>
+    <defaultValue>&quot;Record Type Labels | Sharing Rules | Organisation Wide Default settings | Process Builder/ Flows | Bulk Uploads | Email Templates&quot;</defaultValue>
+    <inlineHelpText>Change components categorised as Medium</inlineHelpText>
+    <label>Medium Change Scope Defnition</label>
+    <length>32768</length>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>
