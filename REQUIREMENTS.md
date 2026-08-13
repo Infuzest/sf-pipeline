@@ -86,7 +86,7 @@ The critical differentiators over DevOps Center:
 | D6 | Jira and ADO supported via a common **work-item adapter interface** | "JIRO"/Jira + ADO both required; adapter keeps the pipeline vendor-neutral |
 | D7 | Static analysis via **Salesforce Code Analyzer v5** (PMD, ESLint, RetireJS, Flow scanner, Graph Engine) | Official, covers Apex + LWC + Flows; SonarQube optional add-on |
 | D8 | Rollback is **metadata-only** and always **validate-first with preview** | Salesforce cannot roll back data or all metadata types safely; the UI must be honest about this |
-| D9 | Test level per stage: PR validate = `RunLocalTests` (or impacted-test selection later); prod deploy = quick-deploy of the validated package where possible | Speed for citizen devs, safety for prod |
+| D9 | Test policy per stage: `Conditional`, `RunLocalTests`, `RunSpecifiedTests`, or `RunRelevantTests`; specified tests use a reviewed class allow-list and Quick Deploy reuses only an identical test policy | Speed for developers, explicit evidence for reviewers, safety for governed stages |
 
 **Assumptions:** GitHub Cloud (not GHES); Salesforce sandboxes per stage (not scratch
 orgs) since citizen developers work in persistent sandboxes; Jira Cloud and/or Azure

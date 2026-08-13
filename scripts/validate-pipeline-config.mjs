@@ -53,6 +53,14 @@ if (Array.isArray(config?.pipeline)) {
       else seen.set(v, i);
     });
   }
+  config.pipeline.forEach((stage, i) => {
+    const classes = stage?.testClasses ?? [];
+    if (stage?.testLevel === "RunSpecifiedTests" && classes.length === 0) {
+      errors.push(`/pipeline/${i}/testClasses: add at least one Apex test class for RunSpecifiedTests`);
+    } else if (stage?.testLevel !== "RunSpecifiedTests" && classes.length > 0) {
+      errors.push(`/pipeline/${i}/testClasses: test classes can only be used with RunSpecifiedTests`);
+    }
+  });
 }
 if (Array.isArray(config?.devOrgs)) {
   // Dev orgs may reuse a stage org key (shared org) but must be unique among themselves.

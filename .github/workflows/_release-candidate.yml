@@ -37,6 +37,7 @@ jobs:
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
       test_level: ${{ steps.stage.outputs.test_level }}
+      test_classes: ${{ steps.stage.outputs.test_classes }}
       quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
       is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
     steps:
@@ -193,6 +194,7 @@ jobs:
         if: steps.delta.outputs.has_changes == 'true'
         env:
           TEST_LEVEL_INPUT: ${{ needs.prepare.outputs.test_level }}
+          ORBITOPS_TEST_CLASSES: ${{ needs.prepare.outputs.test_classes }}
           QUICK_DEPLOY_ENABLED: ${{ needs.prepare.outputs.quick_deploy }}
           IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
         run: |
@@ -200,6 +202,12 @@ jobs:
           HAS_APEX=$(grep -l "ApexClass\\|ApexTrigger" deploy-package/package/package.xml 2>/dev/null || true)
           if [ "$TEST_LEVEL" = "Conditional" ]; then
             if [ -n "$HAS_APEX" ]; then TEST_LEVEL=RunLocalTests; else TEST_LEVEL=NoTestRun; fi
+          fi
+          TEST_ARGS=()
+          if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
+            while IFS= read -r test_class; do
+              [ -n "$test_class" ] && TEST_ARGS+=(--tests "$test_class")
+            done < <(node .pipeline/scripts/context/test-classes.mjs)
           fi
           DESTRUCTIVE_ARGS=()
           if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
@@ -211,14 +219,14 @@ jobs:
             # standard validate → Quick Deploy path for the exact candidate.
             echo "mode=quick-deploy" >> "$GITHUB_OUTPUT"
             sf project deploy validate --manifest deploy-package/package/package.xml \
-              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > validate-result.json || true
+              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" "${TEST_ARGS[@]}" --target-org target-org --wait 60 --json > validate-result.json || true
           else
             # Stages without Quick Deploy (including sandbox demo targets) use a
             # dry-run before the real atomic deployment. The branch remains
             # untouched if Salesforce rejects it.
             echo "mode=dry-run" >> "$GITHUB_OUTPUT"
             sf project deploy start --dry-run --ignore-conflicts --manifest deploy-package/package/package.xml \
-              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > validate-result.json || true
+              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" "${TEST_ARGS[@]}" --target-org target-org --wait 60 --json > validate-result.json || true
           fi
       - name: Publish candidate validation result
         id: validate-result
@@ -262,6 +270,7 @@ jobs:
         id: actual
         env:
           TEST_LEVEL: ${{ steps.validation.outputs.test_level }}
+          ORBITOPS_TEST_CLASSES: ${{ needs.prepare.outputs.test_classes }}
           VALIDATION_MODE: ${{ steps.validation.outputs.mode }}
           VALIDATION_ID: ${{ steps.validate-result.outputs.validation_id }}
         run: |
@@ -269,13 +278,19 @@ jobs:
           if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
             DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
           fi
+          TEST_ARGS=()
+          if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
+            while IFS= read -r test_class; do
+              [ -n "$test_class" ] && TEST_ARGS+=(--tests "$test_class")
+            done < <(node .pipeline/scripts/context/test-classes.mjs)
+          fi
           if [ "$VALIDATION_MODE" = "quick-deploy" ] && [ -n "$VALIDATION_ID" ]; then
             echo "Completing the validated candidate deployment."
             sf project deploy quick --job-id "$VALIDATION_ID" --target-org target-org --wait 60 --json > deploy-result.json || true
           else
             echo "Deploying the candidate after its practice run."
             sf project deploy start --ignore-conflicts --manifest deploy-package/package/package.xml \
-              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" --target-org target-org --wait 60 --json > deploy-result.json || true
+              "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" "${TEST_ARGS[@]}" --target-org target-org --wait 60 --json > deploy-result.json || true
           fi
       - name: Publish actual deployment result
         if: steps.delta.outputs.has_changes == 'true'

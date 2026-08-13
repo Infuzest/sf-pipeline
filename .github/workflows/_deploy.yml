@@ -50,6 +50,7 @@ jobs:
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
       test_level: ${{ steps.stage.outputs.test_level }}
+      test_classes: ${{ steps.stage.outputs.test_classes }}
       quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
       has_changes: ${{ steps.precheck.outputs.has_changes }}
     steps:
@@ -178,6 +179,9 @@ jobs:
       - name: Attempt quick-deploy
         id: quick
         if: needs.context.outputs.quick_deploy == 'true' && steps.range.outputs.mode == 'delta' && steps.range.outputs.empty != 'true'
+        env:
+          ORBITOPS_EXPECTED_TEST_LEVEL: ${{ needs.context.outputs.test_level }}
+          ORBITOPS_EXPECTED_TEST_CLASSES: ${{ needs.context.outputs.test_classes }}
         run: |
           node .pipeline/scripts/deploy/find-quickdeploy.mjs "$GITHUB_SHA" --dir qd-artifact
           if [ -f qd-artifact/quickdeploy.json ]; then
@@ -201,6 +205,8 @@ jobs:
         if: >-
           steps.quick.outputs.done != 'true' &&
           (steps.range.outputs.mode == 'full' || steps.range.outputs.empty != 'true')
+        env:
+          ORBITOPS_TEST_CLASSES: ${{ needs.context.outputs.test_classes }}
         run: |
           TEST_LEVEL="${{ needs.context.outputs.test_level }}"
           ARGS=(--target-org target-org --wait 60 --json --ignore-conflicts)
@@ -217,6 +223,11 @@ jobs:
           fi
           if [ "$TEST_LEVEL" = "Conditional" ]; then
             if [ -n "$HAS_APEX" ]; then TEST_LEVEL=RunLocalTests; else TEST_LEVEL=NoTestRun; fi
+          fi
+          if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
+            while IFS= read -r test_class; do
+              [ -n "$test_class" ] && ARGS+=(--tests "$test_class")
+            done < <(node .pipeline/scripts/context/test-classes.mjs)
           fi
           echo "Deploying (mode=${{ steps.range.outputs.mode }}, tests=$TEST_LEVEL)"
           sf project deploy start "${ARGS[@]}" --test-level "$TEST_LEVEL" > deploy-result.json || true

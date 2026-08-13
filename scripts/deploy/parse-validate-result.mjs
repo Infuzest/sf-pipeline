@@ -156,9 +156,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 
   if (parsed.succeeded && flag("quickdeploy")) {
+    let testClasses = [];
+    try {
+      testClasses = JSON.parse(process.env.ORBITOPS_VALIDATION_TEST_CLASSES ?? "[]");
+    } catch {
+      console.error("✖ Validation test classes were not valid JSON.");
+      process.exit(1);
+    }
     writeFileSync(
       flag("quickdeploy"),
-      JSON.stringify({ validationId: parsed.validationId, sha: process.env.GITHUB_SHA ?? null }, null, 2)
+      JSON.stringify({
+        validationId: parsed.validationId,
+        sha: process.env.GITHUB_SHA ?? null,
+        testLevel: process.env.ORBITOPS_VALIDATION_TEST_LEVEL ?? null,
+        testClasses,
+      }, null, 2)
     );
   }
   if (flag("coverage")) {
