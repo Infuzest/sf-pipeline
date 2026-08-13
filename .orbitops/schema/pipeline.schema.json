@@ -6,6 +6,18 @@
   "additionalProperties": false,
   "required": ["pipeline"],
   "properties": {
+    "codeScanning": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional integration with GitHub code scanning. The OrbitOps scanner gate runs independently.",
+      "properties": {
+        "publishSarif": {
+          "type": "boolean",
+          "default": false,
+          "description": "Publish scanner SARIF to GitHub code scanning when that repository feature is available"
+        }
+      }
+    },
     "workItems": {
       "type": "object",
       "additionalProperties": false,

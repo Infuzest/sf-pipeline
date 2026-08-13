@@ -35,10 +35,11 @@ jobs:
       min_coverage: ${{ steps.stage.outputs.min_coverage }}
       scanner_max_severity: ${{ steps.stage.outputs.scanner_max_severity }}
       work_items_required: ${{ steps.stage.outputs.work_items_required }}
+      publish_sarif: ${{ steps.stage.outputs.publish_sarif }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
         with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
       - run: npm ci --prefix .pipeline
       - id: stage
@@ -81,11 +82,12 @@ jobs:
     outputs:
       empty: ${{ steps.render.outputs.empty }}
       has_apex: ${{ steps.render.outputs.has_apex }}
+      has_coverage_apex: ${{ steps.coverage-apex.outputs.has_coverage_apex }}
       destructive_count: ${{ steps.render.outputs.destructive_count }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { ref: main, path: .pipeline }
       - run: npm ci --prefix .pipeline
       - uses: ./.pipeline/.github/actions/sf-auth
@@ -105,12 +107,16 @@ jobs:
         id: render
         working-directory: ${{ github.workspace }}
         run: node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
+      - name: Detect production Apex for coverage
+        id: coverage-apex
+        working-directory: ${{ github.workspace }}
+        run: node .pipeline/scripts/delta/coverage-apex.mjs deploy-package
       - name: Post sticky comment
         working-directory: ${{ github.workspace }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:deploy-preview -->" deploy-package/comment.md
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: deploy-package
           path: deploy-package/
@@ -121,9 +127,9 @@ jobs:
     if: needs.context.outputs.is_stage == 'true' && needs.context.outputs.work_items_required == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
         with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
       - run: npm ci --prefix .pipeline
       - name: Collect PR commit messages
@@ -155,9 +161,9 @@ jobs:
       pull-requests: write
       security-events: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { ref: main, path: .pipeline }
       - run: npm ci --prefix .pipeline
       - uses: ./.pipeline/.github/actions/sf-auth
@@ -181,12 +187,6 @@ jobs:
           # code scanning rejects a SARIF with zero runs (nothing scannable changed)
           HAS_RUNS=$(node -pe 'JSON.parse(require("fs").readFileSync("results.sarif","utf8")).runs?.length > 0' 2>/dev/null || echo false)
           echo "has_runs=$HAS_RUNS" >> "$GITHUB_OUTPUT"
-      - name: Upload SARIF to code scanning
-        if: steps.scan.outputs.has_runs == 'true'
-        uses: github/codeql-action/upload-sarif@df409f7d9260372bd5f19e5b04e83cb3c43714ae # v3.27.9
-        with:
-          sarif_file: results.sarif
-          category: orbitops-scanner
       - name: Severity gate
         id: gate
         working-directory: ${{ github.workspace }}
@@ -202,6 +202,13 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:scan -->" scan-comment.md
+      - name: Publish SARIF to GitHub code scanning
+        if: steps.scan.outputs.has_runs == 'true' && needs.context.outputs.publish_sarif == 'true'
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@988661ebb5e81487b3fb31b2185d2856c0a10679 # v4 (Node 24)
+        with:
+          sarif_file: results.sarif
+          category: orbitops-scanner
       - name: Enforce gate
         if: steps.gate.outputs.failed == '1'
         working-directory: ${{ github.workspace }}
@@ -226,9 +233,9 @@ jobs:
       succeeded: ${{ steps.parse.outputs.succeeded }}
       validation_id: ${{ steps.parse.outputs.validation_id }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { ref: main, path: .pipeline }
       - run: npm ci --prefix .pipeline
       - name: Prepare validation status fallback
@@ -248,7 +255,7 @@ jobs:
           instance-url: ${{ needs.context.outputs.instance_url != '' && needs.context.outputs.instance_url || secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
           alias: target-org
-      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6 (Node 24)
         with:
           name: deploy-package
           path: deploy-package/
@@ -319,7 +326,7 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
-      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         if: always()
         with:
           name: validation-output
@@ -334,12 +341,12 @@ jobs:
     if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
         with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
       - run: npm ci --prefix .pipeline
-      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6 (Node 24)
         with:
           name: validation-output
       - name: Enforce minimum coverage
@@ -348,5 +355,5 @@ jobs:
             echo '{"overall": null, "perClass": []}' > coverage.json
           fi
           node .pipeline/scripts/deploy/check-coverage.mjs coverage.json "${{ needs.context.outputs.min_coverage }}" \
-            --has-apex "${{ needs.delta.outputs.has_apex }}" --summary gate.md
+            --has-apex "${{ needs.delta.outputs.has_coverage_apex }}" --summary gate.md
           cat gate.md >> "$GITHUB_STEP_SUMMARY"

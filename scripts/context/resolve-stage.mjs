@@ -46,5 +46,6 @@ setOutputs({
   min_coverage: stage.gates.minCoverage,
   scanner_max_severity: stage.gates.scannerMaxSeverity,
   work_items_required: String(config.workItems.required === true),
+  publish_sarif: String(config.codeScanning.publishSarif === true),
 });
 console.log(`Stage for "${branch}": org=${stage.org} environment=${stage.environment} auth=${stage.authMethod} tests=${stage.testLevel} policy=${stage.policy?.owner ?? (stages[0]?.branch === branch ? "developer" : "central")}${stage.testLevel === "RunSpecifiedTests" ? ` (${stage.testClasses.length} specified)` : ""}`);

@@ -50,6 +50,12 @@ test("work-item tagging is opt-in", async () => {
   assert.equal(cfg.workItems.required, false);
 });
 
+test("GitHub SARIF publishing is opt-in", async () => {
+  const { loadConfig } = await import("./pipeline.mjs");
+  const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  assert.equal(cfg.codeScanning.publishSarif, false);
+});
+
 test("resolveOrg finds dev orgs, stage orgs, and rejects unknown keys", async () => {
   const { loadConfig, resolveOrg } = await import("./pipeline.mjs");
   const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
