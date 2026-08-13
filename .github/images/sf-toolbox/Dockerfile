@@ -15,6 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SF_AUTOUPDATE_DISABLE=true \
     SF_DISABLE_TELEMETRY=true \
     SF_USE_GENERIC_UNIX_KEYCHAIN=true \
+    XDG_DATA_HOME=/opt/orbitops/share \
     SHELL=/bin/bash
 
 # The workflow scripts also use GitHub CLI, Java-backed PMD rules, Python-backed
@@ -42,6 +43,7 @@ RUN npm install --global "@salesforce/cli@${SF_CLI_VERSION}" \
     && test "$(sf version --json | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).cliVersion')" = "@salesforce/cli/${SF_CLI_VERSION}" \
     && sf sgd --help >/dev/null \
     && sf code-analyzer --help >/dev/null \
+    && HOME=/github/home sf sgd --help >/dev/null \
     && npm cache clean --force
 
 ENV DEBIAN_FRONTEND=dialog
