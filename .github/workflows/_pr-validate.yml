@@ -78,6 +78,7 @@ jobs:
       - uses: ./.pipeline/.github/actions/sf-auth
         with: { auth-method: none }
       - name: Compute delta package
+        working-directory: ${{ github.workspace }}
         run: |
           mkdir -p deploy-package
           # Scope the delta to the declared package dirs — sgd otherwise scans
@@ -89,8 +90,10 @@ jobs:
           sf sgd source delta --from "origin/${{ github.base_ref }}" --to "HEAD" $SRC --output-dir deploy-package
       - name: Render deploy preview
         id: render
+        working-directory: ${{ github.workspace }}
         run: node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
       - name: Post sticky comment
+        working-directory: ${{ github.workspace }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:deploy-preview -->" deploy-package/comment.md
@@ -148,6 +151,7 @@ jobs:
         with: { auth-method: none }
       - name: Collect changed files
         id: files
+        working-directory: ${{ github.workspace }}
         run: |
           git diff --name-only --diff-filter=d "origin/${{ github.base_ref }}...HEAD" -- force-app > changed.txt
           COUNT=$(grep -c . changed.txt || true)
@@ -156,6 +160,7 @@ jobs:
       - name: Scan changed files
         id: scan
         if: steps.files.outputs.count != '0'
+        working-directory: ${{ github.workspace }}
         run: |
           WORKSPACE_ARGS=()
           while IFS= read -r f; do [ -n "$f" ] && WORKSPACE_ARGS+=(--workspace "$f"); done < changed.txt
@@ -171,6 +176,7 @@ jobs:
           category: orbitops-scanner
       - name: Severity gate
         id: gate
+        working-directory: ${{ github.workspace }}
         run: |
           GATE_FAILED=0
           node .pipeline/scripts/scanner/gate.mjs results.sarif "${{ needs.context.outputs.scanner_max_severity }}" \
@@ -179,11 +185,13 @@ jobs:
           cat scan-summary.md >> "$GITHUB_STEP_SUMMARY"
           echo "failed=$GATE_FAILED" >> "$GITHUB_OUTPUT"
       - name: Post scan comment
+        working-directory: ${{ github.workspace }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:scan -->" scan-comment.md
       - name: Enforce gate
         if: steps.gate.outputs.failed == '1'
+        working-directory: ${{ github.workspace }}
         run: |
           echo "New findings at or above the blocking severity — see the scan comment on the PR."
           exit 1
@@ -232,6 +240,7 @@ jobs:
           name: deploy-package
           path: deploy-package/
       - name: Check-only deploy
+        working-directory: ${{ github.workspace }}
         run: |
           TEST_LEVEL="${{ needs.context.outputs.test_level }}"
           if [ "$TEST_LEVEL" = "Conditional" ]; then
@@ -265,6 +274,7 @@ jobs:
           fi
       - name: Parse result
         id: parse
+        working-directory: ${{ github.workspace }}
         run: |
           QUICKDEPLOY_ARGS=()
           if [ "$VALIDATE_MODE" = "validate" ]; then QUICKDEPLOY_ARGS=(--quickdeploy quickdeploy.json); fi
@@ -279,6 +289,7 @@ jobs:
           exit "$VALIDATE_FAILED"
       - name: Post validation status comment
         if: always()
+        working-directory: ${{ github.workspace }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
