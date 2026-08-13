@@ -1,11 +1,28 @@
 [
   {
+    "id": "legacy:DEV_DEV1",
     "name": "Dev1",
     "org": "DEV_DEV1",
+    "orgType": "sandbox",
     "authMethod": "jwt",
-    "username": "salik.bhatti@bupa.com.developer1",
     "connectedBy": "admin",
     "connectedAt": "2026-08-13T12:14:43.662Z",
-    "instanceHost": "bupa--developer1.sandbox.my.salesforce.com"
+    "lastVerifiedAt": "2026-08-13T12:14:43.662Z",
+    "connectionStatus": "ready",
+    "instanceHost": "bupa--developer1.sandbox.my.salesforce.com",
+    "username": "salik.bhatti@bupa.com.developer1"
+  },
+  {
+    "id": "03b04df0-300c-40e8-b45a-27730ddc64a5",
+    "name": "Integration",
+    "org": "DEV_INTEGRATION",
+    "orgType": "sandbox",
+    "authMethod": "jwt",
+    "connectedBy": "admin",
+    "connectedAt": "2026-08-13T14:39:59.211Z",
+    "lastVerifiedAt": "2026-08-13T14:39:59.211Z",
+    "connectionStatus": "ready",
+    "instanceHost": "bupa--integrate.sandbox.my.salesforce.com",
+    "username": "salik.bhatti@bupa.com.integrate"
   }
 ]
