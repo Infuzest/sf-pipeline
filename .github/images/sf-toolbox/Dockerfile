@@ -6,7 +6,7 @@ ARG CODE_ANALYZER_VERSION=5.14.0
 
 LABEL org.opencontainers.image.title="OrbitOps Salesforce CI toolbox" \
       org.opencontainers.image.description="Version-pinned Salesforce CLI, delta and code-analysis tools for OrbitOps pipelines" \
-      org.opencontainers.image.source="https://github.com/Xyraxel/sf-pipeline" \
+      org.opencontainers.image.source="https://github.com/Infuzest/sf-pipeline" \
       org.opencontainers.image.licenses="MIT"
 
 ENV DEBIAN_FRONTEND=noninteractive \

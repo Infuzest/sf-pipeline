@@ -31,6 +31,7 @@ jobs:
       username: ${{ steps.org.outputs.username }}
       instance_url: ${{ steps.org.outputs.instance_url }}
       test_level: ${{ steps.stage.outputs.test_level }}
+      test_classes: ${{ steps.stage.outputs.test_classes }}
       min_coverage: ${{ steps.stage.outputs.min_coverage }}
       scanner_max_severity: ${{ steps.stage.outputs.scanner_max_severity }}
     steps:
@@ -58,7 +59,7 @@ jobs:
     if: needs.context.outputs.is_stage == 'true'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -129,7 +130,7 @@ jobs:
     if: needs.context.outputs.is_stage == 'true'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -202,7 +203,7 @@ jobs:
     if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}
@@ -241,6 +242,8 @@ jobs:
           path: deploy-package/
       - name: Check-only deploy
         working-directory: ${{ github.workspace }}
+        env:
+          ORBITOPS_TEST_CLASSES: ${{ needs.context.outputs.test_classes }}
         run: |
           TEST_LEVEL="${{ needs.context.outputs.test_level }}"
           if [ "$TEST_LEVEL" = "Conditional" ]; then
@@ -249,6 +252,12 @@ jobs:
           DESTRUCTIVE_ARGS=()
           if [ "${{ needs.delta.outputs.destructive_count }}" != "0" ]; then
             DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
+          fi
+          TEST_ARGS=()
+          if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
+            while IFS= read -r test_class; do
+              [ -n "$test_class" ] && TEST_ARGS+=(--tests "$test_class")
+            done < <(node .pipeline/scripts/context/test-classes.mjs)
           fi
           # `sf project deploy validate` rejects NoTestRun (validations exist to
           # enable quick-deploys, which require tests). Use a dry-run for that case;
@@ -260,6 +269,7 @@ jobs:
               --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" \
               --test-level NoTestRun \
+              "${TEST_ARGS[@]}" \
               --target-org target-org \
               --wait 60 --json > validate-result.json || true
           else
@@ -269,12 +279,16 @@ jobs:
               --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" \
               --test-level "$TEST_LEVEL" \
+              "${TEST_ARGS[@]}" \
               --target-org target-org \
               --wait 60 --json > validate-result.json || true
           fi
       - name: Parse result
         id: parse
         working-directory: ${{ github.workspace }}
+        env:
+          ORBITOPS_VALIDATION_TEST_LEVEL: ${{ needs.context.outputs.test_level }}
+          ORBITOPS_VALIDATION_TEST_CLASSES: ${{ needs.context.outputs.test_classes }}
         run: |
           QUICKDEPLOY_ARGS=()
           if [ "$VALIDATE_MODE" = "validate" ]; then QUICKDEPLOY_ARGS=(--quickdeploy quickdeploy.json); fi

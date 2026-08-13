@@ -45,7 +45,7 @@ concurrency:
 
 jobs:
   release:
-    uses: Xyraxel/sf-pipeline/.github/workflows/_release-candidate.yml@main
+    uses: Infuzest/sf-pipeline/.github/workflows/_release-candidate.yml@main
     with:
       pr_number: ${{ inputs.pr_number }}
       target_branch: ${{ inputs.target_branch }}

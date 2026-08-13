@@ -19,7 +19,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/xyraxel/orbitops-sf-toolbox
+  IMAGE: ghcr.io/infuzest/orbitops-sf-toolbox
   VERSION_TAG: 2.142.7-sgd6.45.1-ca5.14.0-r2
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
@@ -46,7 +46,7 @@ jobs:
           file: .github/images/sf-toolbox/Dockerfile
           platforms: linux/amd64
           load: true
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
           tags: |
             ${{ env.IMAGE }}:${{ env.VERSION_TAG }}
             ${{ env.IMAGE }}:latest
@@ -70,8 +70,9 @@ jobs:
   runtime-smoke:
     name: Pull toolbox and verify runtime action
     runs-on: ubuntu-latest
+    needs: build
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}

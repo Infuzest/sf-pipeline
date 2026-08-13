@@ -21,7 +21,7 @@ jobs:
     name: Full scan
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/xyraxel/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
+      image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
         username: ${{ github.actor }}
         password: ${{ github.token }}

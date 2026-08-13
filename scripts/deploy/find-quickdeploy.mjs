@@ -15,6 +15,8 @@ const sha = process.argv[2];
 const dirIdx = process.argv.indexOf("--dir");
 const dir = dirIdx > -1 ? process.argv[dirIdx + 1] : ".";
 const repo = process.env.GITHUB_REPOSITORY;
+const expectedTestLevel = process.env.ORBITOPS_EXPECTED_TEST_LEVEL;
+const expectedTestClasses = process.env.ORBITOPS_EXPECTED_TEST_CLASSES ?? "[]";
 
 const gh = (args) => execFileSync("gh", args, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
 const notFound = (why) => {
@@ -38,8 +40,11 @@ try {
   const qd = `${dir}/quickdeploy.json`;
   if (!existsSync(qd)) notFound("validation run had no quickdeploy artifact (dry-run stage or failed validate)");
 
-  const { validationId, sha: validatedSha } = JSON.parse(readFileSync(qd, "utf8"));
+  const { validationId, sha: validatedSha, testLevel, testClasses } = JSON.parse(readFileSync(qd, "utf8"));
   if (!validationId || !validatedSha) notFound("quickdeploy.json incomplete");
+  if (!expectedTestLevel || testLevel !== expectedTestLevel || JSON.stringify(testClasses ?? []) !== expectedTestClasses) {
+    notFound("validation used a different test policy");
+  }
 
   console.log(`Quick-deploy candidate: validation ${validationId} (validated sha ${validatedSha.slice(0, 7)})`);
   setOutputs({ found: true, validation_id: validationId, validated_sha: validatedSha });

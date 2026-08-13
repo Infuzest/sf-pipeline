@@ -56,7 +56,7 @@ Salesforce's own page; Salesforce DevOps never sees your password).
 **Pro dev (Git)**:
 
 ```bash
-git clone https://github.com/SalikPOC/sf-pipeline && cd sf-pipeline
+git clone https://github.com/Infuzest/sf-pipeline && cd sf-pipeline
 gh auth login                      # once
 sf org login web -a my-sandbox     # if you'll retrieve from a sandbox
 ```
@@ -212,7 +212,7 @@ back-out links) · *My changes* (✓ INT ✓ UAT ○ PROD badges per work item) 
 ```bash
 git tag -l 'deploy/uat/*'                      # every release, sequenced
 git show deploy/uat/3                          # what the tag points at
-gh api repos/SalikPOC/sf-pipeline/deployments  # GitHub Deployments records
+gh api repos/Infuzest/sf-pipeline/deployments  # GitHub Deployments records
 # full manifests (components, work items, actor, run URL):
 git fetch origin orbitops-meta && git show origin/orbitops-meta:deployments/uat/3.json
 ```
