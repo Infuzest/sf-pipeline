@@ -1,0 +1,98 @@
+githubConfigUrl: https://github.com/Infuzest/sf-pipeline
+githubConfigSecret: orbitops-github-app
+
+runnerScaleSetName: orbitops-toolbox-pool
+minRunners: 1
+maxRunners: 4
+
+controllerServiceAccount:
+  namespace: arc-systems
+  name: orbitops-arc-gha-rs-controller
+
+# Each Salesforce job runs in its existing toolbox container. Docker-in-Docker
+# is therefore required by GitHub's job-container support. The requests are
+# deliberately sized so GKE places one runner on each e2-standard-4 node.
+template:
+  spec:
+    restartPolicy: Never
+    nodeSelector:
+      cloud.google.com/gke-nodepool: orbitops-runner-pool-v2
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: github-runner
+        effect: NoSchedule
+    initContainers:
+      - name: init-dind-externals
+        image: ghcr.io/actions/actions-runner:2.336.0
+        command: ["cp"]
+        args: ["-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        volumeMounts:
+          - name: dind-externals
+            mountPath: /home/runner/tmpDir
+      - name: dind
+        image: docker:28.5.1-dind
+        args:
+          - dockerd
+          - --host=unix:///var/run/docker.sock
+          - --group=$(DOCKER_GROUP_GID)
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        securityContext:
+          privileged: true
+        restartPolicy: Always
+        startupProbe:
+          exec:
+            command: ["docker", "info"]
+          failureThreshold: 24
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 3200m
+            memory: 11Gi
+          limits:
+            cpu: 3500m
+            memory: 13Gi
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:2.336.0
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+    volumes:
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
+      - name: work
+        emptyDir: {}

@@ -245,3 +245,9 @@ Only jobs that need the toolbox container move to this runner; quick context and
 bookkeeping jobs remain on GitHub-hosted runners so one self-hosted machine does
 not unnecessarily serialize the whole pipeline. If the variable is absent,
 the workflows safely fall back to `ubuntu-latest`.
+
+For concurrent deployments, use the managed ARC pool described in
+[`infra/github-runners/README.md`](../infra/github-runners/README.md) and set the
+variable to `["orbitops-toolbox-pool"]`. The PoC pool keeps one clean runner
+ready and can scale to four independent runners. OrbitOps does not serialize
+jobs by Salesforce environment; Salesforce manages any target-org queue.
