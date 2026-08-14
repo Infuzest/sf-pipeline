@@ -223,3 +223,25 @@ When moving to an org: create `citizen-devs`, `release-managers`,
 - Enable secret scanning + push protection (Settings → Code security)
 - Disallow merge types other than **merge commit** (preserves Work-Items footers)
 - Default branch: `main`
+
+### Faster toolbox jobs on an organisation runner
+
+Salesforce jobs run inside the pinned OrbitOps toolbox container. By default,
+they use an ephemeral `ubuntu-latest` runner, which commonly spends 40–50
+seconds downloading and starting that container even though the Salesforce CLI
+is already installed inside it.
+
+To use an organisation or self-hosted runner with a persistent Docker cache:
+
+1. Share the runner or runner group with this repository and give it a unique
+   label such as `orbitops-toolbox`.
+2. Ensure Docker is installed, then pull the current image once:
+   `docker pull ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2`.
+3. In **Settings → Secrets and variables → Actions → Variables**, create
+   `ORBITOPS_TOOLBOX_RUNNER_LABELS` with a JSON array value. For example:
+   `["self-hosted","linux","x64","orbitops-toolbox"]`.
+
+Only jobs that need the toolbox container move to this runner; quick context and
+bookkeeping jobs remain on GitHub-hosted runners so one self-hosted machine does
+not unnecessarily serialize the whole pipeline. If the variable is absent,
+the workflows safely fall back to `ubuntu-latest`.

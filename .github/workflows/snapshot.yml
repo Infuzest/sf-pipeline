@@ -24,7 +24,7 @@ jobs:
       matrix:
         branch: [integration, uat, main]
     name: Drift check (${{ matrix.branch }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
