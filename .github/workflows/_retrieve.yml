@@ -1,35 +1,36 @@
 # Salesforce DevOps citizen workspace — "Pull my changes" (REQUIREMENTS.md E6.2).
 # Retrieves a builder's sandbox edits (via source tracking) into their
 # work-item branch as a bot commit. Dispatched by the UI.
-name: Salesforce DevOps Retrieve
+name: Salesforce DevOps retrieve logic
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       operation:
         description: "tracked, recent, catalog, or selected"
         required: true
         default: tracked
-        type: choice
-        options: [tracked, recent, catalog, selected]
+        type: string
       modified_days:
         description: "For recent pulls, include metadata modified within this many days"
         required: false
         default: "2"
-        type: choice
-        options: ["1", "2", "3", "4", "5", "6", "7", "10"]
+        type: string
       work_branch:
         description: "Work-item branch to commit retrieved changes to (feature/…)"
         required: false
         default: ""
+        type: string
       source_org:
         description: "Org key the builder worked in (a devOrgs entry or stage org from .orbitops/pipeline.yml)"
         required: true
         default: INT
+        type: string
       selection:
         description: "Explicit Type:Member entries, one per line (selected operation only)"
         required: false
         default: ""
+        type: string
 
 permissions:
   contents: write
@@ -55,14 +56,12 @@ jobs:
       instance_url: ${{ steps.org.outputs.instance_url }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - id: org
         run: |
           git fetch -q origin orbitops-meta 2>/dev/null || true
           git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
-          node scripts/context/resolve-org.mjs "${{ inputs.source_org }}" --registry connected-orgs.json
+          node "$ORBITOPS_RUNTIME/scripts/context/resolve-org.mjs" "${{ inputs.source_org }}" --registry connected-orgs.json
 
   retrieve:
     name: Pull changes from ${{ inputs.source_org }}
@@ -81,12 +80,12 @@ jobs:
       # the work branch is materialized as a worktree for the retrieve itself.
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - run: npm ci
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       # Connected orgs (context.username set) authenticate via JWT with the
       # shared OrbitOps CI certificate — no per-org tokens exist, so Salesforce's
       # forced refresh-token rotation can't break them. Stage/dev orgs keep
       # their per-org secrets.
-      - uses: ./.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
           client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
@@ -102,18 +101,18 @@ jobs:
           ORBITOPS_SELECTION: ${{ inputs.selection }}
         run: |
           if [ "${{ inputs.operation }}" = "catalog" ]; then
-            node scripts/retrieve/metadata-catalog.mjs --org source-org --out metadata-catalog.json
+            node "$ORBITOPS_RUNTIME/scripts/retrieve/metadata-catalog.mjs" --org source-org --out metadata-catalog.json
             echo "count=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "${{ inputs.operation }}" = "selected" ]; then
-            node scripts/retrieve/metadata-selection.mjs --out retrieve-package.xml --json tracked.json
+            node "$ORBITOPS_RUNTIME/scripts/retrieve/metadata-selection.mjs" --out retrieve-package.xml --json tracked.json
           elif [ "${{ inputs.operation }}" = "recent" ]; then
-            node scripts/retrieve/metadata-catalog.mjs --org source-org --out metadata-catalog.json
-            node scripts/retrieve/recent-metadata.mjs --catalog metadata-catalog.json \
+            node "$ORBITOPS_RUNTIME/scripts/retrieve/metadata-catalog.mjs" --org source-org --out metadata-catalog.json
+            node "$ORBITOPS_RUNTIME/scripts/retrieve/recent-metadata.mjs" --catalog metadata-catalog.json \
               --days "${{ inputs.modified_days }}" --out retrieve-package.xml --json tracked.json
           else
-            node scripts/retrieve/source-members.mjs --org source-org \
+            node "$ORBITOPS_RUNTIME/scripts/retrieve/source-members.mjs" --org source-org \
               --out retrieve-package.xml --json tracked.json
           fi
           COUNT=$(node -pe 'JSON.parse(require("fs").readFileSync("tracked.json","utf8")).total')

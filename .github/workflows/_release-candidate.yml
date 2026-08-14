@@ -46,17 +46,12 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0, fetch-tags: true }
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
-      - run: npm ci --prefix .pipeline
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - id: stage
-        working-directory: .pipeline
         run: |
           git fetch -q origin orbitops-meta 2>/dev/null || true
           git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
-          node scripts/context/resolve-stage.mjs "${{ inputs.target_branch }}" --registry connected-orgs.json
+          node "$ORBITOPS_RUNTIME/scripts/context/resolve-stage.mjs" "${{ inputs.target_branch }}" --registry connected-orgs.json
       - name: Confirm the open promotion still targets this stage
         id: pr
         env:
@@ -79,11 +74,9 @@ jobs:
           ' >> "$GITHUB_OUTPUT"
       - name: Resolve this promotion's Apex test plan
         id: test-plan
-        working-directory: .pipeline
         run: |
-          cp ../pr.json pr.json
           node -e 'const fs=require("fs"); const pr=JSON.parse(fs.readFileSync("pr.json","utf8")); fs.writeFileSync("pr-body.md", pr.body ?? "")'
-          node scripts/context/request-test-plan.mjs --body pr-body.md \
+          node "$ORBITOPS_RUNTIME/scripts/context/request-test-plan.mjs" --body pr-body.md \
             --fallback-level '${{ steps.stage.outputs.test_level }}' \
             --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
             --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' || (startsWith(steps.pr.outputs.head_ref, 'orbitops/bundle/') && steps.pr.outputs.author_type == 'Bot') }}'
@@ -132,11 +125,9 @@ jobs:
           ref: ${{ needs.prepare.outputs.base_sha }}
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - name: Trust the mounted GitHub workspace
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: npm ci --prefix .pipeline
       - name: Confirm approval did not make the candidate stale
         env:
           PR_NUMBER: ${{ inputs.pr_number }}
@@ -172,7 +163,7 @@ jobs:
           fi
           echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
           echo "tree=$CANDIDATE_TREE" >> "$GITHUB_OUTPUT"
-      - uses: ./.pipeline/.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with: { auth-method: none } # install CLI + sfdx-git-delta before computing the package
       - name: Build the exact deployment package
         id: delta
@@ -182,7 +173,7 @@ jobs:
           CANDIDATE_TREE: ${{ steps.candidate.outputs.tree }}
         run: |
           mkdir -p deploy-package
-          SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+          SRC=$(node $ORBITOPS_RUNTIME/scripts/context/package-dirs.mjs)
           # shellcheck disable=SC2086
           sf sgd source delta --from "$BASE_SHA" --to "$CANDIDATE_SHA" $SRC --output-dir deploy-package
           CHANGED=$(grep -c "<members>" deploy-package/package/package.xml 2>/dev/null || true)
@@ -197,8 +188,8 @@ jobs:
           # The preview is associated with this release run, not the main
           # workflow commit from which it was dispatched.
           export GITHUB_SHA="$CANDIDATE_SHA"
-          SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh deploy-package "${{ needs.prepare.outputs.environment }}" delta || true
-      - uses: ./.pipeline/.github/actions/sf-auth
+          SCRIPTS_DIR="$ORBITOPS_RUNTIME/scripts" bash $ORBITOPS_RUNTIME/scripts/deploy/publish-deploy-preview.sh deploy-package "${{ needs.prepare.outputs.environment }}" delta || true
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         if: steps.delta.outputs.has_changes == 'true'
         with:
           auth-method: ${{ needs.prepare.outputs.auth_method }}
@@ -226,7 +217,7 @@ jobs:
           if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
             while IFS= read -r test_class; do
               [ -n "$test_class" ] && TEST_ARGS+=(--tests "$test_class")
-            done < <(node .pipeline/scripts/context/test-classes.mjs)
+            done < <(node $ORBITOPS_RUNTIME/scripts/context/test-classes.mjs)
           fi
           DESTRUCTIVE_ARGS=()
           if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
@@ -254,13 +245,13 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           FAILED=0
-          node .pipeline/scripts/deploy/parse-validate-result.mjs validate-result.json --errors errors.md || FAILED=1
+          node $ORBITOPS_RUNTIME/scripts/deploy/parse-validate-result.mjs validate-result.json --errors errors.md || FAILED=1
           if [ -f errors.md ]; then
             { echo "<!-- orbitops:validate-errors -->"; cat errors.md; } > errors-comment.md
           else
             printf '<!-- orbitops:validate-errors -->\n## ✅ Candidate validation succeeded against %s\n\nThe real deployment will run next. The target branch is still unchanged.\n' "${{ needs.prepare.outputs.org }}" > errors-comment.md
           fi
-          node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
+          node $ORBITOPS_RUNTIME/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
           exit "$FAILED"
       - name: Create deployment record
         id: gh-deploy
@@ -301,7 +292,7 @@ jobs:
           if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
             while IFS= read -r test_class; do
               [ -n "$test_class" ] && TEST_ARGS+=(--tests "$test_class")
-            done < <(node .pipeline/scripts/context/test-classes.mjs)
+            done < <(node $ORBITOPS_RUNTIME/scripts/context/test-classes.mjs)
           fi
           if [ "$VALIDATION_MODE" = "quick-deploy" ] && [ -n "$VALIDATION_ID" ]; then
             echo "Completing the validated candidate deployment."
@@ -317,7 +308,7 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           FAILED=0
-          node .pipeline/scripts/deploy/parse-validate-result.mjs deploy-result.json --errors errors.md || FAILED=1
+          node $ORBITOPS_RUNTIME/scripts/deploy/parse-validate-result.mjs deploy-result.json --errors errors.md || FAILED=1
           if [ -f errors.md ]; then
             {
               echo "<!-- orbitops:validate-errors -->"
@@ -328,7 +319,7 @@ jobs:
           else
             printf '<!-- orbitops:validate-errors -->\n## ✅ Salesforce deployment succeeded\n\nRecording this exact release in the target branch now.\n' > errors-comment.md
           fi
-          node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
+          node $ORBITOPS_RUNTIME/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
           exit "$FAILED"
       - name: Merge only the candidate Salesforce deployed
         id: merge
@@ -377,11 +368,11 @@ jobs:
           git config user.name "orbitops-bot"
           git config user.email "orbitops-bot@users.noreply.github.com"
           ENV="${{ needs.prepare.outputs.environment }}"
-          SEQ=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV")
+          SEQ=$(git tag -l "deploy/${ENV}/*" | node $ORBITOPS_RUNTIME/scripts/deploy/next-seq.mjs "$ENV")
           TAG="deploy/${ENV}/${SEQ}"
           VERSION_TAG=""
           if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$RELEASE_TYPE" != "none" ]; then
-            VERSION_TAG=$(git tag -l 'v*' | node .pipeline/scripts/deploy/next-version.mjs "$RELEASE_TYPE")
+            VERSION_TAG=$(git tag -l 'v*' | node $ORBITOPS_RUNTIME/scripts/deploy/next-version.mjs "$RELEASE_TYPE")
             if git rev-parse -q --verify "refs/tags/${VERSION_TAG}" >/dev/null; then
               echo "Version tag ${VERSION_TAG} already exists. Nothing was changed; start the release again." >&2
               exit 1
@@ -398,7 +389,7 @@ jobs:
             if (process.env.VERSION_TAG) extra.versionTag = process.env.VERSION_TAG;
             console.log(JSON.stringify(extra));
           ')
-          node .pipeline/scripts/deploy/manifest.mjs --env "$ENV" --seq "$SEQ" --sha "$MERGED_SHA" \
+          node $ORBITOPS_RUNTIME/scripts/deploy/manifest.mjs --env "$ENV" --seq "$SEQ" --sha "$MERGED_SHA" \
             --delta-dir deploy-package --commits-file commit-messages.json \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --actor "$GITHUB_ACTOR" --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -438,7 +429,7 @@ jobs:
           HEAD_REF: ${{ needs.prepare.outputs.head_ref }}
         run: gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${HEAD_REF}" || true
       - name: Notify work items
-        run: node .pipeline/scripts/workitems/post-deployment.mjs manifest.json --status deployed --out workitem-postbacks.json
+        run: node $ORBITOPS_RUNTIME/scripts/workitems/post-deployment.mjs manifest.json --status deployed --out workitem-postbacks.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: workitem-postbacks
@@ -461,14 +452,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
-      - run: npm ci --prefix .pipeline
+        with: { fetch-depth: 0 }
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - name: Open sync PRs
-        working-directory: .pipeline
         run: |
-          PAIRS=$(node scripts/context/back-promotion-pairs.mjs)
+          PAIRS=$(node "$ORBITOPS_RUNTIME/scripts/context/back-promotion-pairs.mjs")
           for PAIR in $PAIRS; do
             FROM="${PAIR%%:*}"; TO="${PAIR##*:}"
             if [ "$(gh pr list --repo "$GITHUB_REPOSITORY" --base "$TO" --head "$FROM" --state open --json number --jq length)" = "0" ]; then

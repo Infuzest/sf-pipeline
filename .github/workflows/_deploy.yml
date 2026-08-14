@@ -4,9 +4,9 @@
 # caller (deploy.yml) that does `uses: ...@main`, so a fix merged to main
 # applies to every stage immediately — no per-branch syncing.
 #
-# Two checkouts per job:
-#   - the default workspace = the stage branch being deployed
-#   - .pipeline/            = scripts, config, and tooling from MAIN
+# The caller workspace contains only Salesforce metadata and thin workflow
+# stubs. The private runtime action exposes this repository's implementation as
+# ORBITOPS_RUNTIME without copying it into the customer repository.
 name: Salesforce DevOps deploy logic
 
 on:
@@ -58,16 +58,13 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0, fetch-tags: true }
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - run: npm ci --prefix .pipeline
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - id: stage
-        working-directory: .pipeline
         run: |
           git fetch -q origin orbitops-meta 2>/dev/null || true
           git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
-          node scripts/context/resolve-stage.mjs "${{ github.ref_name }}" --optional --registry connected-orgs.json
-      - uses: ./.pipeline/.github/actions/sf-auth
+          node "$ORBITOPS_RUNTIME/scripts/context/resolve-stage.mjs" "${{ github.ref_name }}" --optional --registry connected-orgs.json
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         if: steps.stage.outputs.is_stage == 'true'
         with: { auth-method: none } # CLI + sfdx-git-delta only, no org auth
       - name: Anything to deploy?
@@ -79,24 +76,24 @@ jobs:
         run: |
           set -euo pipefail
           ENV="${{ steps.stage.outputs.environment }}"
-          LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV" --latest)
+          LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node $ORBITOPS_RUNTIME/scripts/deploy/next-seq.mjs "$ENV" --latest)
           # A repair run has work to do BY DEFINITION — the whole point is that
           # the git delta doesn't describe it, so never let the delta veto it.
           if [ "${{ inputs.mode }}" = "full" ] || [ -n "${{ inputs.include }}" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "Repair deploy requested (mode=${{ inputs.mode }}) — skipping the empty-delta check"
-            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh "" "$ENV" "${{ inputs.mode }}" || true
+            SCRIPTS_DIR="$ORBITOPS_RUNTIME/scripts" bash "$ORBITOPS_RUNTIME/scripts/deploy/publish-deploy-preview.sh" "" "$ENV" "${{ inputs.mode }}" || true
             exit 0
           fi
           if [ -z "$LAST_TAG" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "First deploy to $ENV — full deploy required"
             # Publish a "full" preview so approvers still see what's happening.
-            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh "" "$ENV" full || true
+            SCRIPTS_DIR="$ORBITOPS_RUNTIME/scripts" bash "$ORBITOPS_RUNTIME/scripts/deploy/publish-deploy-preview.sh" "" "$ENV" full || true
             exit 0
           fi
           mkdir -p precheck
-          SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+          SRC=$(node $ORBITOPS_RUNTIME/scripts/context/package-dirs.mjs)
           # shellcheck disable=SC2086
           sf sgd source delta --from "$LAST_TAG" --to HEAD $SRC --output-dir precheck
           CHANGED=$(grep -c "<members>" precheck/package/package.xml 2>/dev/null || true)
@@ -109,7 +106,7 @@ jobs:
             echo "Deployable delta since $LAST_TAG: ${CHANGED:-0} changed, ${DESTR:-0} destructive."
             # Publish the authoritative component list BEFORE the approval gate
             # so the UI's approval card shows exactly what Salesforce receives.
-            SCRIPTS_DIR=.pipeline/scripts bash .pipeline/scripts/deploy/publish-deploy-preview.sh precheck "$ENV" delta || true
+            SCRIPTS_DIR="$ORBITOPS_RUNTIME/scripts" bash "$ORBITOPS_RUNTIME/scripts/deploy/publish-deploy-preview.sh" precheck "$ENV" delta || true
           fi
 
   deploy:
@@ -129,10 +126,8 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0, fetch-tags: true }
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - run: npm ci --prefix .pipeline
-      - uses: ./.pipeline/.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
           client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets.SF_CLIENT_ID }}
@@ -154,7 +149,7 @@ jobs:
         id: range
         run: |
           ENV="${{ needs.context.outputs.environment }}"
-          LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV" --latest)
+          LAST_TAG=$(git tag -l "deploy/${ENV}/*" | node $ORBITOPS_RUNTIME/scripts/deploy/next-seq.mjs "$ENV" --latest)
           echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
           mkdir -p deploy-package
           # A full re-deploy is the repair path for an org that has drifted from
@@ -169,16 +164,16 @@ jobs:
             fi
           else
             echo "mode=delta" >> "$GITHUB_OUTPUT"
-            SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+            SRC=$(node $ORBITOPS_RUNTIME/scripts/context/package-dirs.mjs)
             # shellcheck disable=SC2086
             sf sgd source delta --from "$LAST_TAG" --to "HEAD" $SRC --output-dir deploy-package
             if [ -n "${{ inputs.include }}" ]; then
               # Named components join the delta — the escape hatch for when the
               # git diff cannot express what the org actually needs.
-              node .pipeline/scripts/deploy/merge-manifest.mjs deploy-package/package/package.xml \
+              node $ORBITOPS_RUNTIME/scripts/deploy/merge-manifest.mjs deploy-package/package/package.xml \
                 --include "${{ inputs.include }}"
             fi
-            node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
+            node $ORBITOPS_RUNTIME/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
           fi
 
       - name: Attempt quick-deploy
@@ -188,7 +183,7 @@ jobs:
           ORBITOPS_EXPECTED_TEST_LEVEL: ${{ needs.context.outputs.test_level }}
           ORBITOPS_EXPECTED_TEST_CLASSES: ${{ needs.context.outputs.test_classes }}
         run: |
-          node .pipeline/scripts/deploy/find-quickdeploy.mjs "$GITHUB_SHA" --dir qd-artifact
+          node $ORBITOPS_RUNTIME/scripts/deploy/find-quickdeploy.mjs "$GITHUB_SHA" --dir qd-artifact
           if [ -f qd-artifact/quickdeploy.json ]; then
             VALIDATED_SHA=$(node -pe 'JSON.parse(require("fs").readFileSync("qd-artifact/quickdeploy.json","utf8")).sha')
             VALIDATION_ID=$(node -pe 'JSON.parse(require("fs").readFileSync("qd-artifact/quickdeploy.json","utf8")).validationId')
@@ -232,11 +227,11 @@ jobs:
           if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
             while IFS= read -r test_class; do
               [ -n "$test_class" ] && ARGS+=(--tests "$test_class")
-            done < <(node .pipeline/scripts/context/test-classes.mjs)
+            done < <(node $ORBITOPS_RUNTIME/scripts/context/test-classes.mjs)
           fi
           echo "Deploying (mode=${{ steps.range.outputs.mode }}, tests=$TEST_LEVEL)"
           sf project deploy start "${ARGS[@]}" --test-level "$TEST_LEVEL" > deploy-result.json || true
-          node .pipeline/scripts/deploy/parse-validate-result.mjs deploy-result.json --errors errors.md
+          node $ORBITOPS_RUNTIME/scripts/deploy/parse-validate-result.mjs deploy-result.json --errors errors.md
 
       - name: Record deploy history
         id: record
@@ -245,14 +240,14 @@ jobs:
           git config user.name "orbitops-bot"
           git config user.email "orbitops-bot@users.noreply.github.com"
           ENV="${{ needs.context.outputs.environment }}"
-          SEQ=$(git tag -l "deploy/${ENV}/*" | node .pipeline/scripts/deploy/next-seq.mjs "$ENV")
+          SEQ=$(git tag -l "deploy/${ENV}/*" | node $ORBITOPS_RUNTIME/scripts/deploy/next-seq.mjs "$ENV")
           TAG="deploy/${ENV}/${SEQ}"
           RANGE_FROM="${{ steps.range.outputs.last_tag }}"
           if [ -n "$RANGE_FROM" ]; then RANGE="${RANGE_FROM}..HEAD"; else RANGE="HEAD"; fi
           git log --format=%B%x00 "$RANGE" | node -e "
             const msgs=require('fs').readFileSync(0,'utf8').split('\x00').map(s=>s.trim()).filter(Boolean);
             require('fs').writeFileSync('commit-messages.json', JSON.stringify(msgs));"
-          node .pipeline/scripts/deploy/manifest.mjs --env "$ENV" --seq "$SEQ" --sha "$GITHUB_SHA" \
+          node $ORBITOPS_RUNTIME/scripts/deploy/manifest.mjs --env "$ENV" --seq "$SEQ" --sha "$GITHUB_SHA" \
             --delta-dir deploy-package --commits-file commit-messages.json \
             --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --actor "$GITHUB_ACTOR" --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -283,7 +278,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Notify work items
-        run: node .pipeline/scripts/workitems/post-deployment.mjs manifest.json --status deployed --out workitem-postbacks.json
+        run: node $ORBITOPS_RUNTIME/scripts/workitems/post-deployment.mjs manifest.json --status deployed --out workitem-postbacks.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: workitem-postbacks
@@ -318,14 +313,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
-      - run: npm ci --prefix .pipeline
+        with: { fetch-depth: 0 }
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - name: Open sync PRs
-        working-directory: .pipeline
         run: |
-          PAIRS=$(node scripts/context/back-promotion-pairs.mjs)
+          PAIRS=$(node "$ORBITOPS_RUNTIME/scripts/context/back-promotion-pairs.mjs")
           for PAIR in $PAIRS; do
             FROM="${PAIR%%:*}"; TO="${PAIR##*:}"
             if [ "$(gh pr list --repo "$GITHUB_REPOSITORY" --base "$TO" --head "$FROM" --state open --json number --jq length)" = "0" ]; then

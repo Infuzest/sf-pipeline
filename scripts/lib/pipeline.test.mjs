@@ -9,7 +9,7 @@ test("real pipeline.yml: every declared stage resolves (topology-agnostic)", () 
   //   1. at least one stage is defined,
   //   2. every declared stage round-trips through resolveStage with its fields,
   //   3. a branch that isn't a stage is rejected.
-  const stages = loadPipeline(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  const stages = loadPipeline(new URL("../__fixtures__/pipeline.yml", import.meta.url).pathname);
   assert.ok(stages.length >= 1, "pipeline.yml must declare at least one stage");
 
   for (const s of stages) {
@@ -46,19 +46,19 @@ test("quickDeploy defaults to true and can be disabled per stage", () => {
 
 test("work-item tagging is opt-in", async () => {
   const { loadConfig } = await import("./pipeline.mjs");
-  const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  const cfg = loadConfig(new URL("../__fixtures__/pipeline.yml", import.meta.url).pathname);
   assert.equal(cfg.workItems.required, false);
 });
 
 test("GitHub SARIF publishing is opt-in", async () => {
   const { loadConfig } = await import("./pipeline.mjs");
-  const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  const cfg = loadConfig(new URL("../__fixtures__/pipeline.yml", import.meta.url).pathname);
   assert.equal(cfg.codeScanning.publishSarif, false);
 });
 
 test("resolveOrg finds dev orgs, stage orgs, and rejects unknown keys", async () => {
   const { loadConfig, resolveOrg } = await import("./pipeline.mjs");
-  const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  const cfg = loadConfig(new URL("../__fixtures__/pipeline.yml", import.meta.url).pathname);
   const dev = resolveOrg(cfg, "INT"); // registered dev org wins (has a friendly name)
   assert.equal(dev.authMethod, "sfdx-url");
   assert.match(dev.name, /Shared dev/);
@@ -70,7 +70,7 @@ test("resolveOrg finds dev orgs, stage orgs, and rejects unknown keys", async ()
 
 test("resolveOrg consults the connected-orgs registry", async () => {
   const { loadConfig, resolveOrg } = await import("./pipeline.mjs");
-  const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  const cfg = loadConfig(new URL("../__fixtures__/pipeline.yml", import.meta.url).pathname);
   const reg = [{ name: "Jane's sandbox", org: "DEV_JANE", authMethod: "sfdx-url" }];
   const o = resolveOrg(cfg, "DEV_JANE", reg);
   assert.equal(o.name, "Jane's sandbox");
@@ -79,7 +79,7 @@ test("resolveOrg consults the connected-orgs registry", async () => {
 
 test("resolveOrg returns JWT identity for connected jwt entries", async () => {
   const { loadConfig, resolveOrg, salesforceLoginUrl } = await import("./pipeline.mjs");
-  const cfg = loadConfig(new URL("../../.orbitops/pipeline.yml", import.meta.url).pathname);
+  const cfg = loadConfig(new URL("../__fixtures__/pipeline.yml", import.meta.url).pathname);
   const reg = [{
     name: "Dev1", org: "DEV_DEV1", authMethod: "jwt",
     orgType: "sandbox", username: "test-user@example.com",

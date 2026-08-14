@@ -35,9 +35,9 @@ test("every Salesforce operation shares the connected-org JWT identity", () => {
     ".github/workflows/_pr-validate.yml",
     ".github/workflows/_deploy.yml",
     ".github/workflows/_release-candidate.yml",
-    ".github/workflows/retrieve.yml",
-    ".github/workflows/rollback.yml",
-    ".github/workflows/snapshot.yml",
+    ".github/workflows/_retrieve.yml",
+    ".github/workflows/_rollback.yml",
+    ".github/workflows/_snapshot.yml",
   ]) {
     const source = read(workflow);
     assert.match(source, /connected-orgs\.json/, `${workflow} reads the central org registry`);
@@ -55,7 +55,7 @@ test("missing Salesforce credentials fail with reconnect guidance", () => {
 });
 
 test("rollback blocks only unrecorded Salesforce package files", () => {
-  const workflow = read(".github/workflows/rollback.yml");
+  const workflow = read(".github/workflows/_rollback.yml");
   const preview = read("scripts/rollback/preview.sh");
   assert.match(workflow, /BRANCH: \$\{\{ needs\.context\.outputs\.branch \}\}/);
   assert.match(preview, /scripts\/rollback\/unrecorded\.mjs/);
@@ -77,11 +77,11 @@ test("every toolbox container job supports an organisation runner", () => {
     ".github/workflows/_deploy.yml",
     ".github/workflows/_pr-validate.yml",
     ".github/workflows/_release-candidate.yml",
-    ".github/workflows/full-scan.yml",
-    ".github/workflows/retrieve.yml",
-    ".github/workflows/rollback.yml",
+    ".github/workflows/_full-scan.yml",
+    ".github/workflows/_retrieve.yml",
+    ".github/workflows/_rollback.yml",
     ".github/workflows/sf-toolbox-image.yml",
-    ".github/workflows/snapshot.yml",
+    ".github/workflows/_snapshot.yml",
   ]) {
     const jobs = yaml.load(read(workflow)).jobs ?? {};
     for (const [name, job] of Object.entries(jobs)) {
@@ -92,5 +92,22 @@ test("every toolbox container job supports an organisation runner", () => {
         `${workflow} job ${name} must use the configurable toolbox runner`,
       );
     }
+  }
+});
+
+test("customer repositories never need a copied pipeline implementation", () => {
+  for (const workflow of [
+    ".github/workflows/_deploy.yml",
+    ".github/workflows/_pr-validate.yml",
+    ".github/workflows/_release-candidate.yml",
+    ".github/workflows/_retrieve.yml",
+    ".github/workflows/_rollback.yml",
+    ".github/workflows/_snapshot.yml",
+    ".github/workflows/_full-scan.yml",
+  ]) {
+    const source = read(workflow);
+    assert.doesNotMatch(source, /\.pipeline/, `${workflow} must not checkout implementation from the caller`);
+    assert.doesNotMatch(source, /uses:\s+\.\//, `${workflow} must not invoke a caller-local OrbitOps action`);
+    assert.match(source, /Infuzest\/sf-pipeline\/\.github\/actions\/runtime@main/, `${workflow} loads the private runtime`);
   }
 });
