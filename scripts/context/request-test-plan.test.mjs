@@ -29,6 +29,13 @@ test("a centrally governed stage cannot be overridden by a request marker", () =
   });
 });
 
+test("a trusted OrbitOps stage promotion can choose its own test plan", () => {
+  const body = '<!-- orbitops:test-plan {"level":"RunSpecifiedTests","classes":["ProductionSmokeTest"]} -->';
+  assert.deepEqual(resolveRequestTestPlan(body, "RunLocalTests", [], true), {
+    level: "RunSpecifiedTests", classes: ["ProductionSmokeTest"], source: "request",
+  });
+});
+
 test("rejects an unsafe specified test plan", () => {
   assert.throws(
     () => resolveRequestTestPlan("OrbitOps-Test-Level: RunSpecifiedTests\nOrbitOps-Test-Classes: Test; rm -rf /"),

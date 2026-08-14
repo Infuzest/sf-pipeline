@@ -45,6 +45,16 @@ test("validation and deployment share the connected-org JWT identity", () => {
   }
 });
 
+test("trusted OrbitOps promotions can select tests at every governed stage", () => {
+  const validation = read(".github/workflows/_pr-validate.yml");
+  const release = read(".github/workflows/_release-candidate.yml");
+  for (const [workflow, source] of [["validation", validation], ["release", release]]) {
+    assert.match(source, /startsWith\([^\n]*orbitops\/bundle\//, `${workflow} recognises an OrbitOps stage bundle`);
+    assert.match(source, /author_type|pull_request\.user\.type/, `${workflow} requires the GitHub App bot identity`);
+    assert.match(source, /request-test-plan\.mjs/, `${workflow} resolves that promotion's test plan`);
+  }
+});
+
 test("every toolbox container job supports an organisation runner", () => {
   for (const workflow of [
     ".github/workflows/_deploy.yml",
