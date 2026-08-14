@@ -14,16 +14,16 @@ inputs:
     default: "jwt"
   # jwt method
   client-id:
-    description: "Connected app consumer key (secret SF_CLIENT_ID)"
+    description: "Connected app consumer key (normally the shared ORBITOPS_JWT_CLIENT_ID secret)"
     required: false
   username:
-    description: "Integration user username (secret SF_USERNAME)"
+    description: "Integration user username resolved from connected-orgs.json"
     required: false
   jwt-key:
-    description: "Private key PEM contents (secret SF_JWT_KEY)"
+    description: "Private key PEM contents (normally the shared ORBITOPS_JWT_KEY secret)"
     required: false
   instance-url:
-    description: "Login URL: https://login.salesforce.com for prod/dev orgs, https://test.salesforce.com for sandboxes and scratch orgs (secret SF_INSTANCE_URL)"
+    description: "Login URL resolved from the connected org type: https://login.salesforce.com or https://test.salesforce.com"
     required: false
   # sfdx-url method
   auth-url:
@@ -106,10 +106,17 @@ runs:
         trap 'rm -f "$TMPFILE"' EXIT
         case "$SF_AUTH_METHOD" in
           jwt)
-            : "${SF_AUTH_CLIENT_ID:?client-id required for jwt}" \
-              "${SF_AUTH_USERNAME:?username required for jwt}" \
-              "${SF_AUTH_JWT_KEY:?jwt-key required for jwt}" \
-              "${SF_AUTH_INSTANCE_URL:?instance-url required for jwt}"
+            MISSING=()
+            [ -n "$SF_AUTH_CLIENT_ID" ] || MISSING+=("connected-app client ID")
+            [ -n "$SF_AUTH_USERNAME" ] || MISSING+=("integration username")
+            [ -n "$SF_AUTH_JWT_KEY" ] || MISSING+=("JWT private key")
+            [ -n "$SF_AUTH_INSTANCE_URL" ] || MISSING+=("Salesforce login service")
+            if [ "${#MISSING[@]}" -gt 0 ]; then
+              printf -v MISSING_LIST '%s, ' "${MISSING[@]}"
+              MISSING_LIST="${MISSING_LIST%, }"
+              echo "::error title=Salesforce connection is incomplete::Missing ${MISSING_LIST}. Reconnect this environment in OrbitOps Administration, or restore its legacy GitHub secrets."
+              exit 1
+            fi
             printf '%s' "$SF_AUTH_JWT_KEY" > "$TMPFILE"
             sf org login jwt \
               --client-id "$SF_AUTH_CLIENT_ID" \
@@ -120,7 +127,10 @@ runs:
               --set-default
             ;;
           sfdx-url)
-            : "${SF_AUTH_URL_VALUE:?auth-url required for sfdx-url}"
+            if [ -z "$SF_AUTH_URL_VALUE" ]; then
+              echo "::error title=Salesforce connection is incomplete::The legacy Salesforce authorization URL is missing. Reconnect this environment in OrbitOps Administration."
+              exit 1
+            fi
             printf '%s' "$SF_AUTH_URL_VALUE" > "$TMPFILE"
             sf org login sfdx-url \
               --sfdx-url-file "$TMPFILE" \

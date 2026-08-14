@@ -39,14 +39,17 @@ jobs:
       - run: npm ci
       - name: Resolve stage
         id: stage
-        run: node scripts/context/resolve-stage.mjs "${{ matrix.branch }}"
+        run: |
+          git fetch -q origin orbitops-meta 2>/dev/null || true
+          git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
+          node scripts/context/resolve-stage.mjs "${{ matrix.branch }}" --registry connected-orgs.json
       - uses: ./.github/actions/sf-auth
         with:
           auth-method: ${{ steps.stage.outputs.auth_method }}
-          client-id: ${{ secrets[format('{0}_SF_CLIENT_ID', steps.stage.outputs.org)] }}
-          username: ${{ secrets[format('{0}_SF_USERNAME', steps.stage.outputs.org)] }}
-          jwt-key: ${{ secrets[format('{0}_SF_JWT_KEY', steps.stage.outputs.org)] }}
-          instance-url: ${{ secrets[format('{0}_SF_INSTANCE_URL', steps.stage.outputs.org)] }}
+          client-id: ${{ steps.stage.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', steps.stage.outputs.org)] }}
+          username: ${{ steps.stage.outputs.username != '' && steps.stage.outputs.username || secrets[format('{0}_SF_USERNAME', steps.stage.outputs.org)] }}
+          jwt-key: ${{ steps.stage.outputs.username != '' && secrets.ORBITOPS_JWT_KEY || secrets[format('{0}_SF_JWT_KEY', steps.stage.outputs.org)] }}
+          instance-url: ${{ steps.stage.outputs.instance_url != '' && steps.stage.outputs.instance_url || secrets[format('{0}_SF_INSTANCE_URL', steps.stage.outputs.org)] }}
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', steps.stage.outputs.org)] }}
           alias: target-org
       - name: Retrieve org state into a branch worktree and diff

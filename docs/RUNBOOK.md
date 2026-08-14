@@ -20,10 +20,12 @@ the callers and bound the called jobs. `GITHUB_TOKEN` scopes per workflow:
 | full-scan.yml | read | – | – | write | write (burn-down) |
 | snapshot.yml | read | – | – | – | write (drift) |
 
-Org credentials: environment-level unprefixed secrets gate **deploys** behind
-required reviewers; repo-level org-prefixed secrets serve validation/retrieve/
-preview (see SETUP.md §5). The UI's GitHub App additionally holds Secrets
-write (for Connect-an-org) — its private key lives only in `.env.local`.
+UI-connected orgs use the shared organisation secrets
+`ORBITOPS_JWT_CLIENT_ID` / `ORBITOPS_JWT_KEY`; every Salesforce workflow reads
+the org-specific username and login service from `connected-orgs.json` on
+`orbitops-meta` (see SETUP.md §5). Environment and org-prefixed secrets remain
+legacy fallbacks. The UI's GitHub App writes the non-secret registry; its
+private key lives only in the hosted service.
 
 ## Notifications
 
