@@ -19,6 +19,17 @@ test("all Salesforce validation and deployment paths support specified tests", (
   }
 });
 
+test("the release container trusts its mounted workspace before rebuilding a candidate", () => {
+  const source = read(".github/workflows/_release-candidate.yml");
+  const deployJob = source.slice(source.indexOf("  deploy-and-record:"));
+  const trust = deployJob.indexOf('git config --global --add safe.directory "$GITHUB_WORKSPACE"');
+  const rebuild = deployJob.indexOf("git fetch --no-tags origin \"$HEAD_SHA\"");
+
+  assert.ok(trust >= 0, "release container registers the exact GitHub workspace as safe");
+  assert.ok(rebuild >= 0, "release container rebuilds the approved candidate");
+  assert.ok(trust < rebuild, "workspace trust is configured before the first candidate Git operation");
+});
+
 test("every toolbox container job supports an organisation runner", () => {
   for (const workflow of [
     ".github/workflows/_deploy.yml",
