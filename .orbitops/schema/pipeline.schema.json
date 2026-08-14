@@ -42,7 +42,7 @@
           "org": {
             "type": "string",
             "pattern": "^[A-Z][A-Z0-9_]*$",
-            "description": "Org key — prefixes the repo-level auth secrets (<KEY>_SF_AUTH_URL / <KEY>_SF_CLIENT_ID…)"
+            "description": "Stable OrbitOps org key. Connected org details come from connected-orgs.json; all JWT orgs share the central OrbitOps client id and private key."
           },
           "authMethod": { "enum": ["jwt", "sfdx-url"] }
         }

@@ -49,6 +49,8 @@ jobs:
       org: ${{ steps.stage.outputs.org }}
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
+      username: ${{ steps.stage.outputs.username }}
+      instance_url: ${{ steps.stage.outputs.instance_url }}
       test_level: ${{ steps.stage.outputs.test_level }}
       test_classes: ${{ steps.stage.outputs.test_classes }}
       quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
@@ -61,7 +63,10 @@ jobs:
       - run: npm ci --prefix .pipeline
       - id: stage
         working-directory: .pipeline
-        run: node scripts/context/resolve-stage.mjs "${{ github.ref_name }}" --optional
+        run: |
+          git fetch -q origin orbitops-meta 2>/dev/null || true
+          git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
+          node scripts/context/resolve-stage.mjs "${{ github.ref_name }}" --optional --registry connected-orgs.json
       - uses: ./.pipeline/.github/actions/sf-auth
         if: steps.stage.outputs.is_stage == 'true'
         with: { auth-method: none } # CLI + sfdx-git-delta only, no org auth
@@ -130,10 +135,10 @@ jobs:
       - uses: ./.pipeline/.github/actions/sf-auth
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
-          client-id: ${{ secrets.SF_CLIENT_ID }}
-          username: ${{ secrets.SF_USERNAME }}
-          jwt-key: ${{ secrets.SF_JWT_KEY }}
-          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+          client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets.SF_CLIENT_ID }}
+          username: ${{ needs.context.outputs.username != '' && needs.context.outputs.username || secrets.SF_USERNAME }}
+          jwt-key: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_KEY || secrets.SF_JWT_KEY }}
+          instance-url: ${{ needs.context.outputs.instance_url != '' && needs.context.outputs.instance_url || secrets.SF_INSTANCE_URL }}
           auth-url: ${{ secrets.SF_AUTH_URL }}
           alias: target-org
 
