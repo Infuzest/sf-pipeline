@@ -70,7 +70,7 @@ jobs:
     name: What will deploy
     needs: context
     if: needs.context.outputs.is_stage == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
@@ -146,7 +146,7 @@ jobs:
     name: Code scan
     needs: context
     if: needs.context.outputs.is_stage == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
@@ -220,7 +220,7 @@ jobs:
     name: Validate against target org
     needs: [context, delta]
     if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
