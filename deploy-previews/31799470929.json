@@ -1,0 +1,19 @@
+{
+  "type": "deploy-preview",
+  "env": "integration",
+  "runId": "31799470929",
+  "sha": "313f5b6b7f450663a61b1c37a25ba17e70780471",
+  "mode": "delta",
+  "components": {
+    "ApexClass": [
+      "SFDC_SimpleTest"
+    ],
+    "CustomField": [
+      "Account.SFDC_TEST_Field_1__c"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "timestamp": "2026-08-14T12:16:18.743Z"
+}
