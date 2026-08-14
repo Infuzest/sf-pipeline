@@ -1,0 +1,26 @@
+{
+  "type": "deploy",
+  "env": "integration",
+  "seq": 6,
+  "sha": "3a59026d91d938774c0a28b39fc80bc04a3b6ec7",
+  "workItems": [
+    "PROJ-143"
+  ],
+  "components": {
+    "ApexClass": [
+      "SFDC_SimpleTest"
+    ],
+    "CustomField": [
+      "Account.SFDC_TEST_Field_1__c"
+    ]
+  },
+  "destructive": {},
+  "componentCount": 2,
+  "destructiveCount": 0,
+  "runUrl": "https://github.com/Infuzest/sf-pipeline/actions/runs/31799470929",
+  "actor": "orbitops-poc-sfdcdevops[bot]",
+  "timestamp": "2026-08-14T12:17:02Z",
+  "reason": "candidate deployment",
+  "mode": "delta",
+  "releaseType": "none"
+}
