@@ -246,3 +246,10 @@ Node ESM scripts with `node --test` units · composite action
   `ORBITOPS_JWT_CLIENT_ID` / `ORBITOPS_JWT_KEY`, and keeps legacy secrets only
   as a migration fallback. The workflow contract test enumerates all six paths
   so a new operation cannot silently reintroduce per-org credentials.
+- 2026-08-14: Rollback reconciliation is scoped to deployable Salesforce
+  source, not every stage-branch update. Pipeline-only workflow, script and
+  documentation changes after a release do not alter an org and can safely
+  remain outside the deployment history. Package-directory changes still stop
+  rollback until the governed UI repair deploy records them. The workflow
+  independently repeats this classification so bypassing or refreshing the UI
+  cannot overwrite unrecorded Salesforce work.

@@ -20,6 +20,24 @@ node --input-type=module -e "
 # shellcheck disable=SC1091
 source rollback-refs.env
 
+# A stage branch can legitimately move after a release when only pipeline
+# machinery or documentation changes. Those files never reach Salesforce and
+# therefore cannot make a rollback unsafe. Salesforce package files are
+# different: deploy and record them through the UI before calculating a
+# rollback, otherwise the reverse delta could overwrite unrecorded work.
+: "${BRANCH:?stage branch required for rollback safety check}"
+git fetch -q origin "$BRANCH"
+git diff --name-only "$CURRENT_TAG..origin/$BRANCH" > unrecorded-files.txt
+git show "origin/$BRANCH:sfdx-project.json" > stage-sfdx-project.json 2>/dev/null || cp sfdx-project.json stage-sfdx-project.json
+UNRECORDED_SALESFORCE=$(node scripts/rollback/unrecorded.mjs unrecorded-files.txt stage-sfdx-project.json)
+if [ -n "$UNRECORDED_SALESFORCE" ]; then
+  {
+    echo "::error title=Salesforce changes must be reconciled before rollback::Deploy and record the waiting Salesforce files from the OrbitOps rollback screen, then start a fresh preview."
+    echo "$UNRECORDED_SALESFORCE"
+  } >&2
+  exit 1
+fi
+
 rm -rf reverse-delta && mkdir -p reverse-delta
 SRC=$(node scripts/context/package-dirs.mjs)
 # shellcheck disable=SC2086
