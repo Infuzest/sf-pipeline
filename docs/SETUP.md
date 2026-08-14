@@ -101,9 +101,9 @@ JWT authentication is centralised for every org registered through OrbitOps:
 | `ORBITOPS_JWT_KEY` | GitHub organisation (selected repositories) | Full private-key PEM for that connected app |
 
 The per-org deployment username and org type are stored as non-secret metadata
-in `connected-orgs.json` on `orbitops-meta`. Validation, release, and deployment
-all resolve the same record. GitHub Environments still control approvals, but
-do not need duplicate JWT credentials.
+in `connected-orgs.json` on `orbitops-meta`. Validation, release, deployment,
+backout, retrieval, and drift checks all resolve the same record. GitHub
+Environments still control approvals, but do not need duplicate JWT credentials.
 
 Legacy or manually configured stages can still use environment/repository
 fallback secrets. For an `sfdx-url` stage:

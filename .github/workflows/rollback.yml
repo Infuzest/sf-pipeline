@@ -5,7 +5,8 @@
 # Two jobs: `preview` (no environment, always runs — safety check + validate) and
 # `execute` (environment-gated, runs only when mode=execute — performs the
 # rollback). Splitting them keeps preview freely runnable while the reviewer gate
-# still guards execution. Both auth via repo-level org-prefixed secrets.
+# still guards execution. Both resolve the same central org registry and shared
+# JWT credentials used by validation and release workflows.
 name: Salesforce DevOps Rollback
 
 on:
@@ -55,6 +56,8 @@ jobs:
       org: ${{ steps.stage.outputs.org }}
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
+      username: ${{ steps.stage.outputs.username }}
+      instance_url: ${{ steps.stage.outputs.instance_url }}
       branch: ${{ steps.map.outputs.branch }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
@@ -70,7 +73,10 @@ jobs:
             console.log(s.branch);" --input-type=module)
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
       - id: stage
-        run: node scripts/context/resolve-stage.mjs "${{ steps.map.outputs.branch }}"
+        run: |
+          git fetch -q origin orbitops-meta 2>/dev/null || true
+          git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
+          node scripts/context/resolve-stage.mjs "${{ steps.map.outputs.branch }}" --registry connected-orgs.json
 
   preview:
     name: Rollback preview (${{ inputs.env }})
@@ -95,10 +101,10 @@ jobs:
       - uses: ./.github/actions/sf-auth
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
-          client-id: ${{ secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
-          username: ${{ secrets[format('{0}_SF_USERNAME', needs.context.outputs.org)] }}
-          jwt-key: ${{ secrets[format('{0}_SF_JWT_KEY', needs.context.outputs.org)] }}
-          instance-url: ${{ secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
+          client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
+          username: ${{ needs.context.outputs.username != '' && needs.context.outputs.username || secrets[format('{0}_SF_USERNAME', needs.context.outputs.org)] }}
+          jwt-key: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_KEY || secrets[format('{0}_SF_JWT_KEY', needs.context.outputs.org)] }}
+          instance-url: ${{ needs.context.outputs.instance_url != '' && needs.context.outputs.instance_url || secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
           alias: target-org
       - name: Reverse delta + safety analysis + validate
@@ -133,10 +139,10 @@ jobs:
       - uses: ./.github/actions/sf-auth
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
-          client-id: ${{ secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
-          username: ${{ secrets[format('{0}_SF_USERNAME', needs.context.outputs.org)] }}
-          jwt-key: ${{ secrets[format('{0}_SF_JWT_KEY', needs.context.outputs.org)] }}
-          instance-url: ${{ secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
+          client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
+          username: ${{ needs.context.outputs.username != '' && needs.context.outputs.username || secrets[format('{0}_SF_USERNAME', needs.context.outputs.org)] }}
+          jwt-key: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_KEY || secrets[format('{0}_SF_JWT_KEY', needs.context.outputs.org)] }}
+          instance-url: ${{ needs.context.outputs.instance_url != '' && needs.context.outputs.instance_url || secrets[format('{0}_SF_INSTANCE_URL', needs.context.outputs.org)] }}
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
           alias: target-org
       - name: Reverse delta + safety analysis + validate

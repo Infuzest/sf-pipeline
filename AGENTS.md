@@ -79,9 +79,11 @@ force-app/                    the Salesforce metadata being shipped
   single-source mechanism.
 - Sticky PR comments update in place via hidden HTML markers — never spam.
 - Least-privilege `permissions:` blocks (declared in the callers).
-- Never commit secrets. Org auth = repo secrets `<ORG>_SF_AUTH_URL` or the
-  `<ORG>_SF_CLIENT_ID/_SF_USERNAME/_SF_JWT_KEY/_SF_INSTANCE_URL` set;
-  environment-level unprefixed secrets for gated deploy jobs (see SETUP.md §5).
+- Never commit secrets. UI-connected orgs resolve their username and login
+  service from `connected-orgs.json` and share organisation secrets
+  `ORBITOPS_JWT_CLIENT_ID` / `ORBITOPS_JWT_KEY` across every Salesforce
+  workflow. Legacy repo-level org-prefixed and gated environment secrets remain
+  migration fallbacks only (see SETUP.md §5).
 - Profiles are excluded via `.forceignore` — use permission sets.
 - Citizen-facing text avoids Git jargon ("Promote", not "merge PR").
 - Config changes (pipeline.yml) go via PR to main — never direct push. The UI's

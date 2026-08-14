@@ -171,9 +171,21 @@ and keep the sticky-comment scan gate).
 
 ## 6. Recreate secrets and environments
 
-Secrets are write-only — they cannot be exported; re-enter them. **Repo-level,
-org-prefixed** (used by PR validation / retrieve / preview), per stage org key
-`<ORG>` (e.g. `INT`, `UAT`, `PROD`):
+Secrets are write-only — they cannot be exported; re-enter them. For every org
+registered through OrbitOps, configure these **organisation-level** secrets and
+grant the new repository access:
+
+```
+ORBITOPS_JWT_CLIENT_ID     # shared OrbitOps CI/CD consumer key
+ORBITOPS_JWT_KEY           # shared private-key PEM
+```
+
+The org-specific username and org type live in `connected-orgs.json` on
+`orbitops-meta`; validation, deployment, release, backout, retrieval, and drift
+checks all resolve that record. No duplicate per-stage JWT secrets are needed.
+
+For legacy/manual stages not present in the registry, retain **repo-level,
+org-prefixed** fallback secrets per stage org key `<ORG>`:
 
 ```
 <ORG>_SF_AUTH_URL          # sfdx-url auth (scratch/sandbox stages)
@@ -183,15 +195,14 @@ org-prefixed** (used by PR validation / retrieve / preview), per stage org key
 <ORG>_SF_INSTANCE_URL
 ```
 
-**Environment-level, unprefixed** (gate deploys behind required reviewers), one
-per GitHub Environment (`integration`, `uat`, `production`):
+Legacy gated deploys can also retain **environment-level, unprefixed** fallback
+secrets, one set per GitHub Environment (`integration`, `uat`, `production`):
 
 ```
 SF_AUTH_URL | SF_CLIENT_ID | SF_USERNAME | SF_JWT_KEY | SF_INSTANCE_URL
 ```
 
-Shared/optional: `ORBITOPS_JWT_CLIENT_ID`, `ORBITOPS_JWT_KEY` (Connect-an-org
-shared cert), `NOTIFY_WEBHOOK_URL` (Slack/Teams; absent → step skips green).
+Optional: `NOTIFY_WEBHOOK_URL` (Slack/Teams; absent → step skips green).
 
 **Recreate per stage**: the GitHub **Environment** with required reviewers (a
 Bupa team — EMU supports proper teams, so the personal-account reviewer

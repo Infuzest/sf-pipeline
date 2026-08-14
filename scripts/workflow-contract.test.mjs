@@ -30,11 +30,14 @@ test("the release container trusts its mounted workspace before rebuilding a can
   assert.ok(trust < rebuild, "workspace trust is configured before the first candidate Git operation");
 });
 
-test("validation and deployment share the connected-org JWT identity", () => {
+test("every Salesforce operation shares the connected-org JWT identity", () => {
   for (const workflow of [
     ".github/workflows/_pr-validate.yml",
     ".github/workflows/_deploy.yml",
     ".github/workflows/_release-candidate.yml",
+    ".github/workflows/retrieve.yml",
+    ".github/workflows/rollback.yml",
+    ".github/workflows/snapshot.yml",
   ]) {
     const source = read(workflow);
     assert.match(source, /connected-orgs\.json/, `${workflow} reads the central org registry`);
@@ -43,6 +46,12 @@ test("validation and deployment share the connected-org JWT identity", () => {
     assert.match(source, /ORBITOPS_JWT_KEY/, `${workflow} uses the shared JWT private key`);
     assert.match(source, /outputs\.username/, `${workflow} supplies the org-specific deployment username`);
   }
+});
+
+test("missing Salesforce credentials fail with reconnect guidance", () => {
+  const source = read(".github/actions/sf-auth/action.yml");
+  assert.match(source, /Salesforce connection is incomplete/);
+  assert.match(source, /Reconnect this environment in OrbitOps Administration/);
 });
 
 test("trusted OrbitOps promotions can select tests at every governed stage", () => {

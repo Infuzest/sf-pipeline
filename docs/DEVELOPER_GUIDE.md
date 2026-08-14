@@ -125,5 +125,7 @@ All pipeline behaviour lives on **main** — change it once, it applies everywhe
 - No direct pushes to stage branches — merges only via PR with green checks.
 - Never force-push; history (release tags, manifests) is append-only.
 - Profiles are excluded via `.forceignore` — use permission sets.
-- Secrets are never committed; org auth uses repo/environment secrets
-  (`<ORG>_SF_AUTH_URL` or the `<ORG>_SF_*` JWT set — see SETUP.md).
+- Secrets are never committed. UI-connected orgs share the central OrbitOps
+  JWT credentials while their username and org type come from the
+  `orbitops-meta` registry; legacy repo/environment secrets remain supported
+  during migration (see SETUP.md).

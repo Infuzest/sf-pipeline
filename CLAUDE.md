@@ -238,3 +238,11 @@ Node ESM scripts with `node --test` units · composite action
   The workflow also records GitHub Deployments against the PR head (the
   temporary candidate merge SHA does not exist on GitHub) and never lets a
   deployment-record error mask the Salesforce result.
+- 2026-08-14: Central JWT authentication is a workflow-wide contract, not only
+  a validation/release feature. Rollback and drift snapshot were still reading
+  obsolete `<ORG>_SF_*` secrets, so a newly registered pipeline resolved its
+  stage but passed five empty values to `sf-auth`. Every Salesforce operation
+  now reads the org identity from `connected-orgs.json`, uses the shared
+  `ORBITOPS_JWT_CLIENT_ID` / `ORBITOPS_JWT_KEY`, and keeps legacy secrets only
+  as a migration fallback. The workflow contract test enumerates all six paths
+  so a new operation cannot silently reintroduce per-org credentials.
