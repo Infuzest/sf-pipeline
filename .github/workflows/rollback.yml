@@ -113,6 +113,7 @@ jobs:
           ROLLBACK_ENV: ${{ inputs.env }}
           TARGET_SEQ: ${{ inputs.target_seq }}
           INCLUDE_DESTRUCTIVE: ${{ inputs.include_destructive }}
+          BRANCH: ${{ needs.context.outputs.branch }}
 
   execute:
     name: Rollback execute (${{ inputs.env }})
@@ -151,6 +152,7 @@ jobs:
           ROLLBACK_ENV: ${{ inputs.env }}
           TARGET_SEQ: ${{ inputs.target_seq }}
           INCLUDE_DESTRUCTIVE: ${{ inputs.include_destructive }}
+          BRANCH: ${{ needs.context.outputs.branch }}
       - name: Execute rollback
         run: bash scripts/rollback/execute.sh
         env:

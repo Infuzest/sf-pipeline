@@ -52,6 +52,10 @@ logs "skipping" and stays green. Drift findings arrive as GitHub issues
 - **Missing tracker credentials** → work-item postbacks log and never block.
 - **Failed rollback validation** → preview publishes the verdict; execute
   refuses independently via its own validate-first deploy.
+- **Updates after the latest deployment tag** → workflow/docs changes are
+  ignored because they never reach Salesforce; files inside any declared
+  `sfdx-project.json` package directory stop rollback until the UI's governed
+  **Deploy and record** action succeeds.
 
 ## Residual risks (accepted for the PoC)
 

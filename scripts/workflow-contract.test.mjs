@@ -54,6 +54,14 @@ test("missing Salesforce credentials fail with reconnect guidance", () => {
   assert.match(source, /Reconnect this environment in OrbitOps Administration/);
 });
 
+test("rollback blocks only unrecorded Salesforce package files", () => {
+  const workflow = read(".github/workflows/rollback.yml");
+  const preview = read("scripts/rollback/preview.sh");
+  assert.match(workflow, /BRANCH: \$\{\{ needs\.context\.outputs\.branch \}\}/);
+  assert.match(preview, /scripts\/rollback\/unrecorded\.mjs/);
+  assert.match(preview, /Salesforce changes must be reconciled before rollback/);
+});
+
 test("trusted OrbitOps promotions can select tests at every governed stage", () => {
   const validation = read(".github/workflows/_pr-validate.yml");
   const release = read(".github/workflows/_release-candidate.yml");
