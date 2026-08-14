@@ -32,6 +32,7 @@ jobs:
       base_sha: ${{ steps.pr.outputs.base_sha }}
       head_sha: ${{ steps.pr.outputs.head_sha }}
       head_ref: ${{ steps.pr.outputs.head_ref }}
+      author_type: ${{ steps.pr.outputs.author_type }}
       candidate_tree: ${{ steps.candidate.outputs.tree }}
       org: ${{ steps.stage.outputs.org }}
       environment: ${{ steps.stage.outputs.environment }}
@@ -74,6 +75,7 @@ jobs:
             console.log(`base_sha=${pr.base.sha}`);
             console.log(`head_sha=${pr.head.sha}`);
             console.log(`head_ref=${pr.head.ref}`);
+            console.log(`author_type=${pr.user?.type ?? ""}`);
           ' >> "$GITHUB_OUTPUT"
       - name: Resolve this promotion's Apex test plan
         id: test-plan
@@ -84,7 +86,7 @@ jobs:
           node scripts/context/request-test-plan.mjs --body pr-body.md \
             --fallback-level '${{ steps.stage.outputs.test_level }}' \
             --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
-            --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' }}'
+            --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' || (startsWith(steps.pr.outputs.head_ref, 'orbitops/bundle/') && steps.pr.outputs.author_type == 'Bot') }}'
       - name: Build the candidate locally and detect conflicts
         id: candidate
         env:

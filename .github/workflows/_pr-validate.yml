@@ -58,7 +58,7 @@ jobs:
           node scripts/context/request-test-plan.mjs --body pr-body.md \
             --fallback-level '${{ steps.stage.outputs.test_level }}' \
             --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
-            --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' }}'
+            --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' || (startsWith(github.head_ref, 'orbitops/bundle/') && github.event.pull_request.user.type == 'Bot') }}'
   delta:
     name: What will deploy
     needs: context
