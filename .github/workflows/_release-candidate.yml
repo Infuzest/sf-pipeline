@@ -36,6 +36,8 @@ jobs:
       org: ${{ steps.stage.outputs.org }}
       environment: ${{ steps.stage.outputs.environment }}
       auth_method: ${{ steps.stage.outputs.auth_method }}
+      username: ${{ steps.stage.outputs.username }}
+      instance_url: ${{ steps.stage.outputs.instance_url }}
       test_level: ${{ steps.test-plan.outputs.test_level }}
       test_classes: ${{ steps.test-plan.outputs.test_classes }}
       quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
@@ -50,7 +52,10 @@ jobs:
       - run: npm ci --prefix .pipeline
       - id: stage
         working-directory: .pipeline
-        run: node scripts/context/resolve-stage.mjs "${{ inputs.target_branch }}"
+        run: |
+          git fetch -q origin orbitops-meta 2>/dev/null || true
+          git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
+          node scripts/context/resolve-stage.mjs "${{ inputs.target_branch }}" --registry connected-orgs.json
       - name: Confirm the open promotion still targets this stage
         id: pr
         env:
@@ -195,10 +200,10 @@ jobs:
         if: steps.delta.outputs.has_changes == 'true'
         with:
           auth-method: ${{ needs.prepare.outputs.auth_method }}
-          client-id: ${{ secrets.SF_CLIENT_ID }}
-          username: ${{ secrets.SF_USERNAME }}
-          jwt-key: ${{ secrets.SF_JWT_KEY }}
-          instance-url: ${{ secrets.SF_INSTANCE_URL }}
+          client-id: ${{ needs.prepare.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets.SF_CLIENT_ID }}
+          username: ${{ needs.prepare.outputs.username != '' && needs.prepare.outputs.username || secrets.SF_USERNAME }}
+          jwt-key: ${{ needs.prepare.outputs.username != '' && secrets.ORBITOPS_JWT_KEY || secrets.SF_JWT_KEY }}
+          instance-url: ${{ needs.prepare.outputs.instance_url != '' && needs.prepare.outputs.instance_url || secrets.SF_INSTANCE_URL }}
           auth-url: ${{ secrets.SF_AUTH_URL }}
           alias: target-org
       - name: Validate the exact candidate against Salesforce

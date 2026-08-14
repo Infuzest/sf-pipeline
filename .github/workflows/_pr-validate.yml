@@ -28,8 +28,8 @@ jobs:
       auth_method: ${{ steps.stage.outputs.auth_method }}
       # Set only for UI-connected orgs. The username varies by org; the CI/CD
       # client id and private key are shared repository secrets.
-      username: ${{ steps.org.outputs.username }}
-      instance_url: ${{ steps.org.outputs.instance_url }}
+      username: ${{ steps.stage.outputs.username }}
+      instance_url: ${{ steps.stage.outputs.instance_url }}
       test_level: ${{ steps.test-plan.outputs.test_level }}
       test_classes: ${{ steps.test-plan.outputs.test_classes }}
       min_coverage: ${{ steps.stage.outputs.min_coverage }}
@@ -44,7 +44,10 @@ jobs:
       - run: npm ci --prefix .pipeline
       - id: stage
         working-directory: .pipeline
-        run: node scripts/context/resolve-stage.mjs "${{ github.base_ref }}" --optional
+        run: |
+          git fetch -q origin orbitops-meta 2>/dev/null || true
+          git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
+          node scripts/context/resolve-stage.mjs "${{ github.base_ref }}" --optional --registry connected-orgs.json
       - id: test-plan
         if: steps.stage.outputs.is_stage == 'true'
         working-directory: .pipeline
@@ -56,16 +59,6 @@ jobs:
             --fallback-level '${{ steps.stage.outputs.test_level }}' \
             --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
             --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' }}'
-      - id: org
-        if: steps.stage.outputs.is_stage == 'true'
-        working-directory: .pipeline
-        env:
-          ORG_KEY: ${{ steps.stage.outputs.org }}
-        run: |
-          git fetch -q origin orbitops-meta 2>/dev/null || true
-          git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
-          node scripts/context/resolve-org.mjs "$ORG_KEY" --registry connected-orgs.json
-
   delta:
     name: What will deploy
     needs: context

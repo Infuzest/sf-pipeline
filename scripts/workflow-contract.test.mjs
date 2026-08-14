@@ -30,6 +30,21 @@ test("the release container trusts its mounted workspace before rebuilding a can
   assert.ok(trust < rebuild, "workspace trust is configured before the first candidate Git operation");
 });
 
+test("validation and deployment share the connected-org JWT identity", () => {
+  for (const workflow of [
+    ".github/workflows/_pr-validate.yml",
+    ".github/workflows/_deploy.yml",
+    ".github/workflows/_release-candidate.yml",
+  ]) {
+    const source = read(workflow);
+    assert.match(source, /connected-orgs\.json/, `${workflow} reads the central org registry`);
+    assert.match(source, /--registry connected-orgs\.json/, `${workflow} resolves the stage through the registry`);
+    assert.match(source, /ORBITOPS_JWT_CLIENT_ID/, `${workflow} uses the shared JWT consumer key`);
+    assert.match(source, /ORBITOPS_JWT_KEY/, `${workflow} uses the shared JWT private key`);
+    assert.match(source, /outputs\.username/, `${workflow} supplies the org-specific deployment username`);
+  }
+});
+
 test("every toolbox container job supports an organisation runner", () => {
   for (const workflow of [
     ".github/workflows/_deploy.yml",

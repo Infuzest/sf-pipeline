@@ -8,7 +8,8 @@
  * This keeps the branch topology defined ONLY by .orbitops/pipeline.yml —
  * adding or removing a stage never requires editing workflow trigger lists.
  */
-import { loadConfig, resolveStage } from "../lib/pipeline.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { loadConfig, resolveOrg, resolveStage } from "../lib/pipeline.mjs";
 import { setOutputs } from "../lib/output.mjs";
 
 const optional = process.argv.includes("--optional");
@@ -18,6 +19,10 @@ if (!branch) {
   process.exit(2);
 }
 
+const registryIndex = process.argv.indexOf("--registry");
+const registryPath = registryIndex > -1 ? process.argv[registryIndex + 1] : null;
+const connectedOrgs =
+  registryPath && existsSync(registryPath) ? JSON.parse(readFileSync(registryPath, "utf8")) : [];
 const config = loadConfig();
 const stages = config.pipeline;
 let stage;
@@ -33,12 +38,19 @@ try {
   process.exit(1);
 }
 
+// The stage owns policy/topology; the connected-org registry owns the
+// Salesforce identity. All connected orgs share one JWT app and key, with only
+// the deployment username and login service varying by org.
+const org = resolveOrg(config, stage.org, connectedOrgs);
+
 setOutputs({
   is_stage: "true",
   is_last_stage: String(stages[stages.length - 1]?.branch === branch),
   org: stage.org,
   environment: stage.environment,
-  auth_method: stage.authMethod,
+  auth_method: org.authMethod,
+  username: org.username ?? "",
+  instance_url: org.loginUrl ?? "",
   test_level: stage.testLevel,
   test_classes: JSON.stringify(stage.testClasses ?? []),
   policy_owner: stage.policy?.owner ?? (stages[0]?.branch === branch ? "developer" : "central"),
@@ -48,4 +60,4 @@ setOutputs({
   work_items_required: String(config.workItems.required === true),
   publish_sarif: String(config.codeScanning.publishSarif === true),
 });
-console.log(`Stage for "${branch}": org=${stage.org} environment=${stage.environment} auth=${stage.authMethod} tests=${stage.testLevel} policy=${stage.policy?.owner ?? (stages[0]?.branch === branch ? "developer" : "central")}${stage.testLevel === "RunSpecifiedTests" ? ` (${stage.testClasses.length} specified)` : ""}`);
+console.log(`Stage for "${branch}": org=${stage.org} environment=${stage.environment} auth=${org.authMethod} tests=${stage.testLevel} policy=${stage.policy?.owner ?? (stages[0]?.branch === branch ? "developer" : "central")}${stage.testLevel === "RunSpecifiedTests" ? ` (${stage.testClasses.length} specified)` : ""}`);

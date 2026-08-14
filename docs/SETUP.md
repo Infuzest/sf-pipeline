@@ -93,44 +93,35 @@ Two methods, chosen per stage via the `auth-method` input of the
 
 ## 5. Secrets
 
-Secrets exist at **two levels** with the same values:
+JWT authentication is centralised for every org registered through OrbitOps:
 
-- **Repository-level, org-key-prefixed** (`INT_SF_AUTH_URL`, `UAT_SF_AUTH_URL`,
-  `PROD_SF_CLIENT_ID`, `PROD_SF_JWT_KEY`, `PROD_SF_USERNAME`,
-  `PROD_SF_INSTANCE_URL`) — used by **PR validation** jobs. These must NOT be
-  environment-scoped: environment secrets would trigger the environment's
-  required-reviewer gate on every PR validation.
-- **Environment-level, unprefixed** (below) — used by **deploy** jobs, which run
-  inside the environment and are gated by its required reviewers.
+| Secret | Recommended level | Value |
+|---|---|---|
+| `ORBITOPS_JWT_CLIENT_ID` | GitHub organisation (selected repositories) | Shared OrbitOps CI/CD consumer key |
+| `ORBITOPS_JWT_KEY` | GitHub organisation (selected repositories) | Full private-key PEM for that connected app |
 
-### Environment-level (per GitHub Environment)
+The per-org deployment username and org type are stored as non-secret metadata
+in `connected-orgs.json` on `orbitops-meta`. Validation, release, and deployment
+all resolve the same record. GitHub Environments still control approvals, but
+do not need duplicate JWT credentials.
 
-In each Environment (Settings → Environments → <env> → Add secret):
-
-**JWT stages** (e.g. `production`):
-
-| Secret | Value |
-|---|---|
-| `SF_CLIENT_ID` | Connected app consumer key |
-| `SF_USERNAME` | Integration user username in that org |
-| `SF_JWT_KEY` | Full contents of `server.key` (PEM, including BEGIN/END lines) |
-| `SF_INSTANCE_URL` | `https://login.salesforce.com` (prod/dev orgs) or `https://test.salesforce.com` (sandboxes & scratch orgs) |
-
-**sfdx-url stages** (e.g. `integration`, `uat`):
+Legacy or manually configured stages can still use environment/repository
+fallback secrets. For an `sfdx-url` stage:
 
 | Secret | Value |
 |---|---|
 | `SF_AUTH_URL` | `sf org display -o <alias> --verbose --json` → `result.sfdxAuthUrl` |
 
-Environment-level (not repo-level) secrets matter: they're only exposed to jobs
-that pass that environment's gate.
+For a legacy JWT stage not present in `connected-orgs.json`, the existing
+`SF_CLIENT_ID`, `SF_USERNAME`, `SF_JWT_KEY`, and `SF_INSTANCE_URL` environment
+secrets remain supported as a migration fallback.
 
 ### Optional secrets
 
 | Secret | Level | Purpose |
 |---|---|---|
 | `NOTIFY_WEBHOOK_URL` | repo | Slack/Teams incoming-webhook URL; deploy failures post a message. Absent → silently skipped. |
-| `DEV_*_SF_AUTH_URL` | repo | Created automatically by the UI's "Connect an org" flow (§7). |
+| `DEV_*_SF_AUTH_URL` | repo | Legacy v1 connection only; new UI connections use the central JWT credentials. |
 
 ## 6. Org ↔ stage mapping
 
