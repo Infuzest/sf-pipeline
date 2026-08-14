@@ -34,7 +34,7 @@ env:
 jobs:
   context:
     name: Resolve stage
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
@@ -111,7 +111,7 @@ jobs:
     name: Deploy to ${{ needs.context.outputs.org }}
     needs: context
     if: needs.context.outputs.is_stage == 'true' && needs.context.outputs.has_changes == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
       credentials:
