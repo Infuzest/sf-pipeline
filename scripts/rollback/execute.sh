@@ -5,6 +5,7 @@
 # Assumes preview.sh already ran in this job (reverse-delta/ + rollback-refs.env exist).
 # Env: ROLLBACK_ENV, TARGET_SEQ, INCLUDE_DESTRUCTIVE, REASON, BRANCH.
 set -euo pipefail
+RUNTIME_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # shellcheck disable=SC1091
 source rollback-refs.env
 
@@ -25,7 +26,7 @@ echo "Deploying rollback to the org…"
 sf project deploy start --ignore-conflicts \
   --manifest reverse-delta/package/package.xml "${DESTRUCTIVE_ARGS[@]}" \
   --test-level NoTestRun --target-org target-org --wait 60 --json > deploy.json || true
-node scripts/deploy/parse-validate-result.mjs deploy.json --errors derrors.md
+node "$RUNTIME_ROOT/scripts/deploy/parse-validate-result.mjs" deploy.json --errors derrors.md
 
 # 2. Forward revert commit: env branch's force-app -> target state, keeping
 #    added-after-target components unless destructive was requested (so git
@@ -77,7 +78,7 @@ git tag -a "$NEW_TAG" "$TIP" -m "OrbitOps rollback: ${GITHUB_SERVER_URL}/${GITHU
 git push -q origin "$NEW_TAG"
 
 # 5. Rollback manifest on the orbitops-meta branch.
-node scripts/deploy/manifest.mjs --env "$ROLLBACK_ENV" --seq "$NEW_SEQ" \
+node "$RUNTIME_ROOT/scripts/deploy/manifest.mjs" --env "$ROLLBACK_ENV" --seq "$NEW_SEQ" \
   --sha "$TIP" --delta-dir reverse-delta --type rollback \
   --run-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
   --actor "$GITHUB_ACTOR" --timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -101,5 +102,5 @@ for attempt in 1 2 3; do
   git worktree remove -f .meta; echo "meta race, retry $attempt"
 done
 
-node scripts/workitems/post-deployment.mjs manifest.json --status rolled-back || true
+node "$RUNTIME_ROOT/scripts/workitems/post-deployment.mjs" manifest.json --status rolled-back || true
 echo "✅ Rolled back $ROLLBACK_ENV to seq ${TARGET_SEQ} — new state $NEW_TAG" >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"

@@ -2,12 +2,16 @@
 # retrieve the org's citizen-safe metadata and diff it against the env branch.
 # Differences mean someone changed the org outside the pipeline — surfaced as a
 # "Drift report" issue (closed automatically when drift clears).
-name: Salesforce DevOps Drift Snapshot
+name: Salesforce DevOps drift snapshot logic
 
 on:
-  schedule:
-    - cron: "30 4 * * *" # nightly 04:30 UTC
-  workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      branches_json:
+        description: "JSON array of stage branches to inspect"
+        required: false
+        default: '["integration","uat","main"]'
+        type: string
 
 permissions:
   contents: read
@@ -22,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [integration, uat, main]
+        branch: ${{ fromJSON(inputs.branches_json) }}
     name: Drift check (${{ matrix.branch }})
     runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
@@ -36,14 +40,14 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - run: npm ci
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - name: Resolve stage
         id: stage
         run: |
           git fetch -q origin orbitops-meta 2>/dev/null || true
           git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
-          node scripts/context/resolve-stage.mjs "${{ matrix.branch }}" --registry connected-orgs.json
-      - uses: ./.github/actions/sf-auth
+          node "$ORBITOPS_RUNTIME/scripts/context/resolve-stage.mjs" "${{ matrix.branch }}" --registry connected-orgs.json
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with:
           auth-method: ${{ steps.stage.outputs.auth_method }}
           client-id: ${{ steps.stage.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', steps.stage.outputs.org)] }}
@@ -56,7 +60,7 @@ jobs:
         id: drift
         run: |
           set -euo pipefail
-          node scripts/retrieve/source-members.mjs --org target-org --wildcard --out drift-package.xml
+          node "$ORBITOPS_RUNTIME/scripts/retrieve/source-members.mjs" --org target-org --wildcard --out drift-package.xml
           git worktree add -q wt "origin/${{ matrix.branch }}"
           cp drift-package.xml wt/
           (cd wt && sf project retrieve start --manifest drift-package.xml \

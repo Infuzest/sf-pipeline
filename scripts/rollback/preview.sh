@@ -4,8 +4,10 @@
 # (sourceable) and reverse-delta/ for execute.sh to reuse.
 set -euo pipefail
 
-node --input-type=module -e "
-  const {resolveRollbackRefs}=await import('./scripts/rollback/refs.mjs');
+RUNTIME_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+
+ORBITOPS_RUNTIME="$RUNTIME_ROOT" node --input-type=module -e "
+  const {resolveRollbackRefs}=await import(process.env.ORBITOPS_RUNTIME + '/scripts/rollback/refs.mjs');
   const {execSync}=await import('node:child_process');
   const {writeFileSync}=await import('node:fs');
   const tags=execSync('git tag -l \"deploy/${ROLLBACK_ENV}/*\"').toString().split('\n').filter(Boolean);
@@ -29,7 +31,7 @@ source rollback-refs.env
 git fetch -q origin "$BRANCH"
 git diff --name-only "$CURRENT_TAG..origin/$BRANCH" > unrecorded-files.txt
 git show "origin/$BRANCH:sfdx-project.json" > stage-sfdx-project.json 2>/dev/null || cp sfdx-project.json stage-sfdx-project.json
-UNRECORDED_SALESFORCE=$(node scripts/rollback/unrecorded.mjs unrecorded-files.txt stage-sfdx-project.json)
+UNRECORDED_SALESFORCE=$(node "$RUNTIME_ROOT/scripts/rollback/unrecorded.mjs" unrecorded-files.txt stage-sfdx-project.json)
 if [ -n "$UNRECORDED_SALESFORCE" ]; then
   {
     echo "::error title=Salesforce changes must be reconciled before rollback::Deploy and record the waiting Salesforce files from the OrbitOps rollback screen, then start a fresh preview."
@@ -39,11 +41,11 @@ if [ -n "$UNRECORDED_SALESFORCE" ]; then
 fi
 
 rm -rf reverse-delta && mkdir -p reverse-delta
-SRC=$(node scripts/context/package-dirs.mjs)
+SRC=$(node "$RUNTIME_ROOT/scripts/context/package-dirs.mjs")
 # shellcheck disable=SC2086
 sf sgd source delta --from "$CURRENT_TAG" --to "$TARGET_TAG" $SRC --output-dir reverse-delta
 
-node scripts/rollback/analyze.mjs reverse-delta \
+node "$RUNTIME_ROOT/scripts/rollback/analyze.mjs" reverse-delta \
   --env "$ROLLBACK_ENV" --from "$CURRENT_SEQ" --to "$TARGET_SEQ" \
   --include-destructive "$INCLUDE_DESTRUCTIVE" \
   --out-md preview.md --out-json safety.json
@@ -92,7 +94,7 @@ sf project deploy start --dry-run --ignore-conflicts \
   "${MANIFEST_ARGS[@]}" "${DESTRUCTIVE_ARGS[@]}" \
   --test-level NoTestRun --target-org target-org --wait 60 --json > validate.json || true
 VAL_OK=true
-node scripts/deploy/parse-validate-result.mjs validate.json --errors verrors.md || VAL_OK=false
+node "$RUNTIME_ROOT/scripts/deploy/parse-validate-result.mjs" validate.json --errors verrors.md || VAL_OK=false
 echo "Preview complete." >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
 # Publish the combined preview for the UI (job stays green — the JSON carries the

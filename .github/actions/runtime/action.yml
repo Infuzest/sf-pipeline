@@ -1,0 +1,16 @@
+name: Prepare OrbitOps runtime
+description: Exposes the private pipeline implementation to a reusable workflow without copying it into the customer repository.
+
+runs:
+  using: composite
+  steps:
+    - name: Locate runtime
+      shell: bash
+      run: |
+        set -euo pipefail
+        RUNTIME_ROOT="$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"
+        echo "ORBITOPS_RUNTIME=$RUNTIME_ROOT" >> "$GITHUB_ENV"
+
+    - name: Install runtime dependencies
+      shell: bash
+      run: npm ci --prefix "$(cd "$GITHUB_ACTION_PATH/../../.." && pwd)"

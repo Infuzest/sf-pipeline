@@ -4,11 +4,9 @@
 # thin caller (pr-validate.yml) that does `uses: ...@main`, so a fix merged to
 # main applies to every promotion immediately — no per-branch syncing.
 #
-# Two checkouts per job:
-#   - the default workspace = the code under validation (the PR merge ref)
-#   - .pipeline/            = scripts, config, and tooling from MAIN
-# Pipeline behaviour (gates, scripts, stage map) always comes from main;
-# only force-app content comes from the branch being validated.
+# The caller workspace is the code under validation. The private runtime action
+# exposes pipeline implementation as ORBITOPS_RUNTIME; customer repositories do
+# not carry scripts, actions, schemas, or scanner implementation.
 name: Salesforce DevOps validation
 
 on:
@@ -38,24 +36,20 @@ jobs:
       publish_sarif: ${{ steps.stage.outputs.publish_sarif }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
-      - run: npm ci --prefix .pipeline
+        with: { fetch-depth: 0 }
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - id: stage
-        working-directory: .pipeline
         run: |
           git fetch -q origin orbitops-meta 2>/dev/null || true
           git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
-          node scripts/context/resolve-stage.mjs "${{ github.base_ref }}" --optional --registry connected-orgs.json
+          node "$ORBITOPS_RUNTIME/scripts/context/resolve-stage.mjs" "${{ github.base_ref }}" --optional --registry connected-orgs.json
       - id: test-plan
         if: steps.stage.outputs.is_stage == 'true'
-        working-directory: .pipeline
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           printf '%s' "$PR_BODY" > pr-body.md
-          node scripts/context/request-test-plan.mjs --body pr-body.md \
+          node "$ORBITOPS_RUNTIME/scripts/context/request-test-plan.mjs" --body pr-body.md \
             --fallback-level '${{ steps.stage.outputs.test_level }}' \
             --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
             --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' || (startsWith(github.head_ref, 'orbitops/bundle/') && github.event.pull_request.user.type == 'Bot') }}'
@@ -80,10 +74,8 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - run: npm ci --prefix .pipeline
-      - uses: ./.pipeline/.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with: { auth-method: none }
       - name: Compute delta package
         working-directory: ${{ github.workspace }}
@@ -93,22 +85,22 @@ jobs:
           # the whole repo and sweeps in metadata-shaped files that live outside
           # a package (e.g. scripts/setup/**), producing components with no
           # source behind them.
-          SRC=$(node .pipeline/scripts/context/package-dirs.mjs)
+          SRC=$(node $ORBITOPS_RUNTIME/scripts/context/package-dirs.mjs)
           # shellcheck disable=SC2086
           sf sgd source delta --from "origin/${{ github.base_ref }}" --to "HEAD" $SRC --output-dir deploy-package
       - name: Render deploy preview
         id: render
         working-directory: ${{ github.workspace }}
-        run: node .pipeline/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
+        run: node $ORBITOPS_RUNTIME/scripts/delta/render-comment.mjs deploy-package --out deploy-package/comment.md
       - name: Detect production Apex for coverage
         id: coverage-apex
         working-directory: ${{ github.workspace }}
-        run: node .pipeline/scripts/delta/coverage-apex.mjs deploy-package
+        run: node $ORBITOPS_RUNTIME/scripts/delta/coverage-apex.mjs deploy-package
       - name: Post sticky comment
         working-directory: ${{ github.workspace }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:deploy-preview -->" deploy-package/comment.md
+        run: node $ORBITOPS_RUNTIME/scripts/comments/sticky.mjs "<!-- orbitops:deploy-preview -->" deploy-package/comment.md
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         with:
           name: deploy-package
@@ -121,10 +113,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
-      - run: npm ci --prefix .pipeline
+        with: { fetch-depth: 0 }
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - name: Collect PR commit messages
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/pulls/${{ github.event.pull_request.number }}/commits" \
@@ -133,7 +123,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           HEAD_REF: ${{ github.head_ref }}
-        run: node .pipeline/scripts/workitems/check.mjs --title "$PR_TITLE" --branch "$HEAD_REF" --commits-file commits.json
+        run: node $ORBITOPS_RUNTIME/scripts/workitems/check.mjs --title "$PR_TITLE" --branch "$HEAD_REF" --commits-file commits.json
 
   scan:
     name: Code scan
@@ -156,10 +146,8 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - run: npm ci --prefix .pipeline
-      - uses: ./.pipeline/.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with: { auth-method: none }
       - name: Collect changed files
         id: files
@@ -176,7 +164,7 @@ jobs:
         run: |
           WORKSPACE_ARGS=()
           while IFS= read -r f; do [ -n "$f" ] && WORKSPACE_ARGS+=(--workspace "$f"); done < changed.txt
-          sf code-analyzer run "${WORKSPACE_ARGS[@]}" --config-file .pipeline/code-analyzer.yml --output-file results.sarif
+          sf code-analyzer run "${WORKSPACE_ARGS[@]}" --config-file $ORBITOPS_RUNTIME/code-analyzer.yml --output-file results.sarif
           # code scanning rejects a SARIF with zero runs (nothing scannable changed)
           HAS_RUNS=$(node -pe 'JSON.parse(require("fs").readFileSync("results.sarif","utf8")).runs?.length > 0' 2>/dev/null || echo false)
           echo "has_runs=$HAS_RUNS" >> "$GITHUB_OUTPUT"
@@ -185,8 +173,8 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           GATE_FAILED=0
-          node .pipeline/scripts/scanner/gate.mjs results.sarif "${{ needs.context.outputs.scanner_max_severity }}" \
-            --baseline .pipeline/.orbitops/scanner-baseline.json --out scan-summary.md || GATE_FAILED=1
+          node $ORBITOPS_RUNTIME/scripts/scanner/gate.mjs results.sarif "${{ needs.context.outputs.scanner_max_severity }}" \
+            --baseline $ORBITOPS_RUNTIME/.orbitops/scanner-baseline.json --out scan-summary.md || GATE_FAILED=1
           { echo "<!-- orbitops:scan -->"; cat scan-summary.md; } > scan-comment.md
           cat scan-summary.md >> "$GITHUB_STEP_SUMMARY"
           echo "failed=$GATE_FAILED" >> "$GITHUB_OUTPUT"
@@ -194,7 +182,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:scan -->" scan-comment.md
+        run: node $ORBITOPS_RUNTIME/scripts/comments/sticky.mjs "<!-- orbitops:scan -->" scan-comment.md
       - name: Publish SARIF to GitHub code scanning
         if: steps.scan.outputs.has_runs == 'true' && needs.context.outputs.publish_sarif == 'true'
         continue-on-error: true
@@ -228,9 +216,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
         with: { fetch-depth: 0 }
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - run: npm ci --prefix .pipeline
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - name: Prepare validation status fallback
         run: |
           printf '%s\n' \
@@ -239,7 +225,7 @@ jobs:
             '' \
             'Authentication or job setup failed before the validation ran. Open the workflow log for the exact cause, then retry the checks.' \
             > errors-comment.md
-      - uses: ./.pipeline/.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
           client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
@@ -269,7 +255,7 @@ jobs:
           if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
             while IFS= read -r test_class; do
               [ -n "$test_class" ] && TEST_ARGS+=(--tests "$test_class")
-            done < <(node .pipeline/scripts/context/test-classes.mjs)
+            done < <(node $ORBITOPS_RUNTIME/scripts/context/test-classes.mjs)
           fi
           # `sf project deploy validate` rejects NoTestRun (validations exist to
           # enable quick-deploys, which require tests). Use a dry-run for that case;
@@ -305,7 +291,7 @@ jobs:
           QUICKDEPLOY_ARGS=()
           if [ "$VALIDATE_MODE" = "validate" ]; then QUICKDEPLOY_ARGS=(--quickdeploy quickdeploy.json); fi
           VALIDATE_FAILED=0
-          node .pipeline/scripts/deploy/parse-validate-result.mjs validate-result.json \
+          node $ORBITOPS_RUNTIME/scripts/deploy/parse-validate-result.mjs validate-result.json \
             "${QUICKDEPLOY_ARGS[@]}" --coverage coverage.json --errors errors.md || VALIDATE_FAILED=1
           if [ -f errors.md ]; then
             { echo "<!-- orbitops:validate-errors -->"; cat errors.md; } > errors-comment.md
@@ -318,7 +304,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .pipeline/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
+        run: node $ORBITOPS_RUNTIME/scripts/comments/sticky.mjs "<!-- orbitops:validate-errors -->" errors-comment.md
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6 (Node 24)
         if: always()
         with:
@@ -335,10 +321,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-        with: { ref: main, path: .pipeline }
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm, cache-dependency-path: .pipeline/package-lock.json }
-      - run: npm ci --prefix .pipeline
+        with: { fetch-depth: 0 }
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6 (Node 24)
         with:
           name: validation-output
@@ -347,6 +331,6 @@ jobs:
           if [ ! -f coverage.json ]; then
             echo '{"overall": null, "perClass": []}' > coverage.json
           fi
-          node .pipeline/scripts/deploy/check-coverage.mjs coverage.json "${{ needs.context.outputs.min_coverage }}" \
+          node $ORBITOPS_RUNTIME/scripts/deploy/check-coverage.mjs coverage.json "${{ needs.context.outputs.min_coverage }}" \
             --has-apex "${{ needs.delta.outputs.has_coverage_apex }}" --summary gate.md
           cat gate.md >> "$GITHUB_STEP_SUMMARY"

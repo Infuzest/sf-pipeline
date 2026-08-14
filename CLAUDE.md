@@ -253,3 +253,12 @@ Node ESM scripts with `node --test` units · composite action
   rollback until the governed UI repair deploy records them. The workflow
   independently repeats this classification so bypassing or refreshing the UI
   cannot overwrite unrecorded Salesforce work.
+- 2026-08-14: The customer/runtime boundary is now physical, not a naming
+  convention inside one repository. `sf-pipeline` owns only private reusable
+  workflows, actions, scripts, schemas, tests and toolbox assets. Customer
+  Salesforce source and `.orbitops/pipeline.yml` live in a separate repository
+  whose workflows are single-job callers. Because a called workflow's
+  `actions/checkout` always checks out the caller, the private `runtime` action
+  exposes this repository as `ORBITOPS_RUNTIME`; no customer scripts or
+  `.pipeline` checkout are required. Private Actions sharing is enabled only
+  by an explicit organization administration decision.

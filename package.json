@@ -2,11 +2,10 @@
   "name": "sf-pipeline",
   "private": true,
   "type": "module",
-  "description": "Salesforce DevOps Salesforce CI/CD pipeline — SFDX project + GitHub Actions workflows",
+  "description": "Private OrbitOps reusable workflows, actions, and pipeline runtime",
   "scripts": {
-    "config:validate": "node scripts/validate-pipeline-config.mjs",
-    "test": "node --test \"scripts/**/*.test.mjs\"",
-    "scan:baseline": "sf code-analyzer run --workspace force-app --config-file code-analyzer.yml --output-file /tmp/full.sarif && node scripts/scanner/baseline.mjs /tmp/full.sarif --out .orbitops/scanner-baseline.json"
+    "config:validate": "node scripts/validate-pipeline-config.mjs scripts/__fixtures__/pipeline.yml",
+    "test": "node --test \"scripts/**/*.test.mjs\""
   },
   "devDependencies": {
     "ajv": "^8.17.1",

@@ -7,24 +7,23 @@
 # rollback). Splitting them keeps preview freely runnable while the reviewer gate
 # still guards execution. Both resolve the same central org registry and shared
 # JWT credentials used by validation and release workflows.
-name: Salesforce DevOps Rollback
+name: Salesforce DevOps rollback logic
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       env:
         description: "Environment to roll back"
         required: true
-        type: choice
-        options: [integration, uat, production]
+        type: string
       target_seq:
         description: "Target deploy sequence to roll back TO (must be older than current)"
         required: true
+        type: string
       mode:
         description: "preview = validate + safety report only; execute = perform rollback"
         required: true
-        type: choice
-        options: [preview, execute]
+        type: string
         default: preview
       include_destructive:
         description: "Also DELETE components added after the target (data loss risk)"
@@ -34,16 +33,13 @@ on:
       reason:
         description: "Why this rollback is needed (audit log)"
         required: true
+        type: string
 
 permissions:
   contents: write
   deployments: write
   packages: read
   pull-requests: write # rollback revert lands via a merged PR when the branch is protected
-
-concurrency:
-  group: deploy-${{ inputs.env }} # shares the deploy lock — no rollback during a deploy
-  cancel-in-progress: false
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -61,13 +57,11 @@ jobs:
       branch: ${{ steps.map.outputs.branch }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6 (Node 24)
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
       - id: map
         run: |
           BRANCH=$(node -e "
-            const {loadPipeline}=await import('./scripts/lib/pipeline.mjs');
+            const {loadPipeline}=await import(process.env.ORBITOPS_RUNTIME + '/scripts/lib/pipeline.mjs');
             const s=loadPipeline().find(x=>x.environment==='${{ inputs.env }}');
             if(!s){console.error('no stage for env');process.exit(1)}
             console.log(s.branch);" --input-type=module)
@@ -76,7 +70,7 @@ jobs:
         run: |
           git fetch -q origin orbitops-meta 2>/dev/null || true
           git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
-          node scripts/context/resolve-stage.mjs "${{ steps.map.outputs.branch }}" --registry connected-orgs.json
+          node "$ORBITOPS_RUNTIME/scripts/context/resolve-stage.mjs" "${{ steps.map.outputs.branch }}" --registry connected-orgs.json
 
   preview:
     name: Rollback preview (${{ inputs.env }})
@@ -97,8 +91,8 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - run: npm ci
-      - uses: ./.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
           client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
@@ -108,7 +102,7 @@ jobs:
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
           alias: target-org
       - name: Reverse delta + safety analysis + validate
-        run: bash scripts/rollback/preview.sh
+        run: bash "$ORBITOPS_RUNTIME/scripts/rollback/preview.sh"
         env:
           ROLLBACK_ENV: ${{ inputs.env }}
           TARGET_SEQ: ${{ inputs.target_seq }}
@@ -136,8 +130,8 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - run: npm ci
-      - uses: ./.github/actions/sf-auth
+      - uses: Infuzest/sf-pipeline/.github/actions/runtime@main
+      - uses: Infuzest/sf-pipeline/.github/actions/sf-auth@main
         with:
           auth-method: ${{ needs.context.outputs.auth_method }}
           client-id: ${{ needs.context.outputs.username != '' && secrets.ORBITOPS_JWT_CLIENT_ID || secrets[format('{0}_SF_CLIENT_ID', needs.context.outputs.org)] }}
@@ -147,14 +141,14 @@ jobs:
           auth-url: ${{ secrets[format('{0}_SF_AUTH_URL', needs.context.outputs.org)] }}
           alias: target-org
       - name: Reverse delta + safety analysis + validate
-        run: bash scripts/rollback/preview.sh
+        run: bash "$ORBITOPS_RUNTIME/scripts/rollback/preview.sh"
         env:
           ROLLBACK_ENV: ${{ inputs.env }}
           TARGET_SEQ: ${{ inputs.target_seq }}
           INCLUDE_DESTRUCTIVE: ${{ inputs.include_destructive }}
           BRANCH: ${{ needs.context.outputs.branch }}
       - name: Execute rollback
-        run: bash scripts/rollback/execute.sh
+        run: bash "$ORBITOPS_RUNTIME/scripts/rollback/execute.sh"
         env:
           ROLLBACK_ENV: ${{ inputs.env }}
           TARGET_SEQ: ${{ inputs.target_seq }}
