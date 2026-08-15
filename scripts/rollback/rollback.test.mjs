@@ -14,6 +14,14 @@ test("resolves current/target/new tags for a valid rollback", () => {
   assert.equal(r.newTag, "deploy/uat/4");
 });
 
+test("resolves sequence zero to the state before the first OrbitOps release", () => {
+  const r = resolveRollbackRefs(TAGS, "uat", 0);
+  assert.equal(r.current, 3);
+  assert.equal(r.target, 0);
+  assert.equal(r.targetTag, "deploy/uat/1^1");
+  assert.equal(r.newSeq, 4);
+});
+
 test("rejects target >= current", () => {
   assert.throws(() => resolveRollbackRefs(TAGS, "uat", 3), /older than the current/);
   assert.throws(() => resolveRollbackRefs(TAGS, "uat", 5), /does not exist/);

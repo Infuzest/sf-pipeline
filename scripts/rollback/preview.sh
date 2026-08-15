@@ -22,6 +22,14 @@ ORBITOPS_RUNTIME="$RUNTIME_ROOT" node --input-type=module -e "
 # shellcheck disable=SC1091
 source rollback-refs.env
 
+# Sequence 0 is a virtual baseline derived from the first release commit. A
+# first release must therefore retain its first parent; fail with a clear audit
+# message if a repository imported an incompatible tag instead of guessing.
+if [ "$TARGET_SEQ" = "0" ] && ! git rev-parse --verify -q "${TARGET_TAG}^{commit}" >/dev/null; then
+  echo "::error title=Initial release baseline is unavailable::The deploy/${ROLLBACK_ENV}/1 tag does not point to a release commit with a previous stage state." >&2
+  exit 1
+fi
+
 # A stage branch can legitimately move after a release when only pipeline
 # machinery or documentation changes. Those files never reach Salesforce and
 # therefore cannot make a rollback unsafe. Salesforce package files are
@@ -70,7 +78,11 @@ if [ "$HAS_RESTORE" = false ] && [ "$HAS_DELETE" = false ]; then
   {
     echo "## ⏮ Rollback preview — no changes needed"
     echo ""
-    echo "Rolling back **${ROLLBACK_ENV}** to seq ${TARGET_SEQ} would change nothing:"
+    if [ "$TARGET_SEQ" = "0" ]; then
+      echo "Rolling back **${ROLLBACK_ENV}** to before the first OrbitOps release would change nothing:"
+    else
+      echo "Rolling back **${ROLLBACK_ENV}** to seq ${TARGET_SEQ} would change nothing:"
+    fi
     echo "no components need restoring, and components added since the target are kept"
     echo "(destructive rollback is disabled). Enable destructive rollback to remove them."
   } >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"

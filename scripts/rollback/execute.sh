@@ -39,14 +39,18 @@ git checkout -q -B orbitops-rollback-work "origin/$BRANCH"
 # `git checkout <ref> -- <path>` never DELETES files absent from <ref>; remove the
 # tree first so components added after the target are actually dropped from git.
 git rm -rq --ignore-unmatch force-app
-git checkout "$TARGET_TAG" -- force-app
+if git cat-file -e "$TARGET_TAG:force-app" 2>/dev/null; then
+  git checkout "$TARGET_TAG" -- force-app
+fi
 if [ "$INCLUDE_DESTRUCTIVE" != "true" ]; then
   git diff --name-only --diff-filter=A "$TARGET_TAG" "$CURRENT_TAG" -- force-app | while read -r f; do
     [ -n "$f" ] && git checkout "$CURRENT_TAG" -- "$f"
   done
 fi
 git add -A force-app
-COMMIT_ARGS=(-m "Roll back $ROLLBACK_ENV to seq ${TARGET_SEQ}"
+TARGET_DESCRIPTION="seq ${TARGET_SEQ}"
+[ "$TARGET_SEQ" = "0" ] && TARGET_DESCRIPTION="before the first OrbitOps release"
+COMMIT_ARGS=(-m "Roll back $ROLLBACK_ENV to ${TARGET_DESCRIPTION}"
              -m "Reason: ${REASON}"
              -m "Rolled back from ${CURRENT_TAG} to ${TARGET_TAG}."
              -m "Work-Items: POC-0")
@@ -66,7 +70,7 @@ else
   RB_BRANCH="orbitops/rollback-${ROLLBACK_ENV}-${NEW_SEQ}-${GITHUB_RUN_ID}"
   git push -q origin "HEAD:$RB_BRANCH"
   gh pr create --repo "$GITHUB_REPOSITORY" --base "$BRANCH" --head "$RB_BRANCH" \
-    --title "Roll back $ROLLBACK_ENV to seq ${TARGET_SEQ}" \
+    --title "Roll back $ROLLBACK_ENV to ${TARGET_DESCRIPTION}" \
     --body "$(printf 'Automated rollback executed against the %s org.\n\nReason: %s\n\nWork-Items: POC-0' "$ROLLBACK_ENV" "$REASON")"
   gh pr merge "$RB_BRANCH" --repo "$GITHUB_REPOSITORY" --merge --delete-branch
 fi
@@ -103,4 +107,4 @@ for attempt in 1 2 3; do
 done
 
 node "$RUNTIME_ROOT/scripts/workitems/post-deployment.mjs" manifest.json --status rolled-back || true
-echo "✅ Rolled back $ROLLBACK_ENV to seq ${TARGET_SEQ} — new state $NEW_TAG" >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+echo "✅ Rolled back $ROLLBACK_ENV to ${TARGET_DESCRIPTION} — new state $NEW_TAG" >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
