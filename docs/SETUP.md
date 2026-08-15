@@ -1,5 +1,9 @@
 # Salesforce DevOps Platform Setup (platform owner)
 
+For the current repositories, accounts, hosted services and complete operating
+model, read [DEVOPS_CICD.md](DEVOPS_CICD.md) first. This file is the reusable
+setup procedure; `DEVOPS_CICD.md` records the live PoC inventory.
+
 One-time setup for a new pipeline repo. Everything here is clickable/one-liner;
 nothing requires local Salesforce tooling except the certificate step.
 
@@ -45,51 +49,30 @@ Approving directly on GitHub keeps working either way.
 
 ## 4. Org authentication
 
-Two methods, chosen per stage via the `auth-method` input of the
-`.github/actions/sf-auth` composite action:
+The current PoC deliberately separates interactive connection from automation:
 
-- **`jwt`** (ANY org, including scratch orgs): a certificate-bearing app +
-  the JWT bearer flow. On legacy orgs this is the connected app below; on orgs
-  created after Salesforce's Spring '26 change (which blocks *creating/deploying
-  new connected apps*), deploy the **External Client App** instead — it is fully
-  metadata-deployable, including the PEM certificate that enables the JWT
-  Bearer flow (`ExtlClntAppGlobalOauthSettings.certificate`, API 60.0+). The
-  ready-to-deploy bundle lives at `scripts/setup/external-client-app/`:
-  1. `sf project deploy start --metadata-dir scripts/setup/external-client-app -o <alias>`
-  2. `sf org assign permset -n Salesforce DevOps_CI -o <alias>` (pre-authorizes the user)
-  3. Retrieve the org-generated consumer key:
-     `sf project retrieve start --metadata "ExtlClntAppGlobalOauthSettings:Salesforce_DevOps_CI_Global" -o <alias> --target-metadata-dir /tmp/eca --unzip`
-     → `<consumerKey>` in the retrieved `.ecaGlblOauth`. Note: unlike connected
-     apps, the consumer key is minted per org — capture it per org into
-     `<ORG>_SF_CLIENT_ID`.
-  4. Verify: `sf org login jwt --client-id <key> --username <user> --jwt-key-file
-     scripts/setup/connected-app/server.key --instance-url https://test.salesforce.com`
-  (Verified end-to-end against a scratch org on 2026-08.)
-- **`sfdx-url`** (fallback / quickest path): store the CLI's auth URL:
-  `sf org display -o <alias> --verbose --json` → `result.sfdxAuthUrl` → secret
-  `SF_AUTH_URL` on that stage's environment. Refresh it whenever the scratch org
-  is recreated. Historical note: the PoC's scratch stages used this because an
-  earlier version of this doc wrongly believed the ECA JWT flow wasn't
-  scriptable — it is (see above).
+- **OrbitOps Connect** is a self-authorizing Salesforce app used only for the
+  human OAuth Authorization Code + PKCE journey. It returns the authenticated
+  username and instance host. OrbitOps does not retain the access or refresh
+  token.
+- **Salesforce DevOps CI / OrbitOps CI/CD** is the managed, pre-authorized JWT
+  app used by GitHub Actions. Install it in production so sandbox copies inherit
+  the same consumer key and certificate after refresh. Assign its packaged
+  permission set to the integration/deployment user in every target.
 
-### Connected app + JWT certificate (per persistent org)
+JWT is the standard workflow method. The reusable action combines the shared
+`ORBITOPS_JWT_CLIENT_ID` and `ORBITOPS_JWT_KEY` secrets with the username and
+org type from `connected-orgs.json`. `sfdx-url` remains a migration fallback,
+not the scalable design.
 
-1. Generate a keypair (or run `scripts/setup/provision-connected-app.mjs` when
-   available, which automates steps 1–3):
-   ```bash
-   openssl req -x509 -sha256 -nodes -days 730 -newkey rsa:2048 \
-     -keyout server.key -out server.crt -subj "/CN=orbitops-ci"
-   ```
-2. Deploy the connected app: the metadata lives at
-   `force-app/main/default/connectedApps/` (certificate embedded, consumer key
-   pre-set) together with the `Salesforce DevOps_CI` permission set. Deploy both to each org
-   and assign the permission set to the integration user.
-3. Wait 2–10 minutes (connected app propagation), then test locally:
-   ```bash
-   sf org login jwt --client-id <consumer-key> --username <user> \
-     --jwt-key-file server.key --instance-url <login-url>
-   ```
-4. **Never commit `server.key`.** `.gitignore` blocks `*.key`/`*.pem` as a backstop.
+To verify a target without exposing values in logs:
+
+```bash
+sf org login jwt --client-id <consumer-key> --username <deployment-user> \
+  --jwt-key-file <private-key-file> --instance-url https://test.salesforce.com
+```
+
+Never commit the private key, an SFDX auth URL, or a secret value.
 
 ## 5. Secrets
 
@@ -97,8 +80,8 @@ JWT authentication is centralised for every org registered through OrbitOps:
 
 | Secret | Recommended level | Value |
 |---|---|---|
-| `ORBITOPS_JWT_CLIENT_ID` | GitHub organisation (selected repositories) | Shared OrbitOps CI/CD consumer key |
-| `ORBITOPS_JWT_KEY` | GitHub organisation (selected repositories) | Full private-key PEM for that connected app |
+| `ORBITOPS_JWT_CLIENT_ID` | Customer repo for the PoC; organisation/environment in production | Shared OrbitOps CI/CD consumer key |
+| `ORBITOPS_JWT_KEY` | Customer repo for the PoC; organisation/environment in production | Full private-key PEM for that connected app |
 
 The per-org deployment username and org type are stored as non-secret metadata
 in `connected-orgs.json` on `orbitops-meta`. Validation, release, deployment,
@@ -126,18 +109,17 @@ secrets remain supported as a migration fallback.
 ## 6. Org ↔ stage mapping
 
 `.orbitops/pipeline.yml` maps branches to logical org keys and environments.
-Current PoC mapping:
+The file is authoritative. The mapping verified on 15 August 2026 is:
 
 | Branch | Org key | Backing org | Login URL |
 |---|---|---|---|
-| `integration` | INT | scratch org (alias `devopsDev1`) | test.salesforce.com |
-| `uat` | UAT | scratch org (alias `stagingscratch`) | test.salesforce.com |
-| `main` | PROD | Developer org (alias `DevOpsCenterDevHub`) | login.salesforce.com |
+| `integration` | `DEV_DEV2` | Dev2 sandbox | test.salesforce.com |
+| `main` | `DEV_INTEGRATION` | Integration sandbox | test.salesforce.com |
 
-> Scratch orgs expire. When recreating (`sf org create scratch -f
-> config/scratch-def-int.json -a devopsDev1 -v DevOpsCenterDevHub
-> --duration-days 30`), redeploy the connected app and update `SF_USERNAME` in the
-> matching environment.
+After a sandbox refresh, the org ID and host may change. The deployment username
+and packaged CI/CD app should survive when production is configured correctly.
+If either was deliberately removed or renamed, reconnect the org and repair the
+permission-set assignment.
 
 ## 7. Registering dev orgs ("Pull my changes" sources)
 
@@ -148,7 +130,7 @@ two ways to register one:
 
 Settings → **Connect an org** in the Salesforce DevOps UI. The builder signs in on
 Salesforce's own login page (OAuth authorization-code + PKCE against the
-`OrbitOps CI` connected app). The UI stores **no tokens at all** — it records
+`OrbitOps Connect` application). The UI stores **no tokens at all** — it records
 only the username and instance host in `connected-orgs.json` on the
 `orbitops-meta` branch. CI then authenticates to the org via the **JWT Bearer
 flow** with the shared OrbitOps CI certificate, acting as that username.
@@ -156,37 +138,36 @@ flow** with the shared OrbitOps CI certificate, acting as that username.
 so a sealed token dies on first use. JWT mints access tokens on demand — there
 is nothing to expire, rotate, or refresh.)
 
-**One-time setup per connected org (admin):** Setup → Connected Apps OAuth
-Usage → `OrbitOps CI` → **Install** → **Manage** → Edit Policies → Permitted
-Users = *Admin approved users are pre-authorized* → save → add the builder's
-profile (e.g. System Administrator) or a permission set. Revocable any time
-from the same page.
+**One-time automation setup (admin):** install the managed Salesforce DevOps CI
+package in production, allow its sandbox copies to inherit on refresh, and
+assign the packaged permission set to the deployment user. OrbitOps Connect is
+self-authorized separately by the human performing the connection.
 
 **Repo secrets (shared, one-time):** `ORBITOPS_JWT_CLIENT_ID` (the app's
-consumer key) and `ORBITOPS_JWT_KEY` (the certificate's private key — same
-value as `PROD_SF_JWT_KEY`). The UI needs `SF_OAUTH_CLIENT_ID` in `.env.local`.
+consumer key) and `ORBITOPS_JWT_KEY` (the certificate's private key). The UI
+uses the separate OrbitOps Connect consumer key through `SF_OAUTH_CLIENT_ID`.
 
-> Productionization path (decision log 2026-07-15): package the connected app
-> in a **managed package** installed in production — sandboxes inherit it on
-> refresh, scratch orgs install it post-creation, and pre-authorization ships
-> via the package's permission set: fully self-service.
+The managed CI/CD application is required even when the UI connection succeeds:
+the OAuth connection registers the org; the JWT application performs unattended
+retrieve, validate, deploy, snapshot and rollback operations.
 
-### Manual: config + secrets
+### Manual registry fallback
 
-1. Pick an org key, e.g. `DEV_JANE` (uppercase, prefixes the secrets).
-2. Authenticate to it locally, then store its credentials as **repo-level**
-   secrets: for scratch orgs/sandboxes,
-   `sf org display -o <alias> --verbose --json` → `result.sfdxAuthUrl` →
-   secret `DEV_JANE_SF_AUTH_URL`; for persistent orgs use the JWT secret set
-   (`DEV_JANE_SF_CLIENT_ID`, `_SF_USERNAME`, `_SF_JWT_KEY`, `_SF_INSTANCE_URL`).
-3. Add it to `.orbitops/pipeline.yml`:
+Use this only if the UI connection journey is unavailable:
+
+1. Pick an org key, e.g. `DEV_JANE`.
+2. Verify the packaged CI/CD app and permission set for the deployment username.
+3. Add a non-secret entry for the key, display name, username, org type and
+   last-known host to `connected-orgs.json` on `orbitops-meta`. Do not add a
+   client ID, key, access token, refresh token or SFDX auth URL.
+4. Add it to `.orbitops/pipeline.yml` when it is a selectable development org:
    ```yaml
    devOrgs:
      - name: "Jane's dev sandbox"
        org: DEV_JANE
-       authMethod: sfdx-url
+       authMethod: jwt
    ```
-4. It appears in the UI's "Pull my changes" org picker on the next refresh.
+5. It appears in the UI's "Pull my changes" org picker on the next refresh.
 
 Orgs with **source tracking** (scratch orgs, Developer/Developer Pro sandboxes)
 give precise pulls — only what the builder changed. Orgs without it (Developer
@@ -197,8 +178,10 @@ wildcard pulls surface everyone's edits.
 
 ## 8. Roles (PoC: username lists)
 
-The repo owner `SalikPOC` is a personal account, so GitHub teams are unavailable.
-For the PoC, role mapping is by username:
+The active repositories are owned by the `Infuzest` organisation. The current
+human operator is `Xyraxel`; the hosted GitHub App acts as
+`orbitops-poc-sfdcdevops[bot]`. `SalikPOC` is a legacy inactive identity.
+The UI can still use explicit username lists for PoC role mapping:
 
 - CODEOWNERS lists usernames directly (see `.github/CODEOWNERS`)
 - Environment required reviewers: add users directly on the `uat`/`production`
@@ -206,7 +189,7 @@ For the PoC, role mapping is by username:
 - The UI maps roles from env vars (`ROLE_RELEASE_MANAGERS`, `ROLE_ADMINS`,
   comma-separated usernames; everyone else authenticated = citizen dev)
 
-When moving to an org: create `citizen-devs`, `release-managers`,
+For production, create `citizen-devs`, `release-managers`, and
 `orbitops-admins` teams and switch CODEOWNERS + UI role mapping to team slugs.
 
 ## 9. Repo settings checklist
@@ -237,8 +220,9 @@ bookkeeping jobs remain on GitHub-hosted runners so one self-hosted machine does
 not unnecessarily serialize the whole pipeline. If the variable is absent,
 the workflows safely fall back to `ubuntu-latest`.
 
-For concurrent deployments, use the managed ARC pool described in
-[`infra/github-runners/README.md`](../infra/github-runners/README.md) and set the
-variable to `["orbitops-toolbox-pool"]`. The PoC pool keeps one clean runner
-ready and can scale to four independent runners. OrbitOps does not serialize
-jobs by Salesforce environment; Salesforce manages any target-org queue.
+The current PoC has **no self-hosted or ARC runner pool**. Its customer repo
+variable is `ORBITOPS_TOOLBOX_RUNNER_LABELS=["ubuntu-latest"]`. Only switch to
+`["orbitops-toolbox-pool"]` after a matching organisation runner group is
+online, shared with the repo, and proven with a real job. OrbitOps does not
+serialize jobs by Salesforce environment; Salesforce manages the target-org
+deployment queue.

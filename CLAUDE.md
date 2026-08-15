@@ -262,3 +262,11 @@ Node ESM scripts with `node --test` units · composite action
   exposes this repository as `ORBITOPS_RUNTIME`; no customer scripts or
   `.pipeline` checkout are required. Private Actions sharing is enabled only
   by an explicit organization administration decision.
+- 2026-08-15: Operations have one cross-repository source of truth.
+  `docs/DEVOPS_CICD.md` records the active Infuzest repositories, Xyraxel and
+  GitHub App identities, GCP account/project/region, source-of-truth boundaries,
+  shared JWT model, current GitHub-hosted toolbox runner configuration and the
+  manual-versus-WIF UI deployment status. Stale SalikPOC, refresh-token,
+  per-org consumer-key and already-running ARC-pool claims were removed from
+  active setup/runbook documentation; the enterprise porting file is explicitly
+  marked as historical/future reference.

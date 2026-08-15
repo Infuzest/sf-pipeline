@@ -3,6 +3,9 @@
 For the platform owner. Citizen-facing help lives in `CITIZEN_GUIDE.md`;
 first-time setup in `SETUP.md`.
 
+Read [DEVOPS_CICD.md](DEVOPS_CICD.md) for the authoritative current repository,
+account, GCP resource, authentication and customer/runtime inventory.
+
 ## Workflow × permissions map (security review)
 
 All actions pinned by commit SHA; CLI/plugins pinned by version in
@@ -41,8 +44,9 @@ logs "skipping" and stays green. Drift findings arrive as GitHub issues
   back to full validate+deploy.
 - **`sf project deploy validate` rejects NoTestRun** → test-free stages use
   dry-run instead (identical check-only semantics, no quick-deploy id).
-- **Tag/meta-branch races** (parallel envs) → per-env concurrency groups +
-  3× fetch-retry on `orbitops-meta` pushes.
+- **Tag/meta-branch races** (parallel envs) → 3× fetch-retry on
+  `orbitops-meta` pushes. OrbitOps deliberately does not lock Salesforce
+  deployments; Salesforce may queue overlapping requests.
 - **Protected env branches** → rollback/back-promotion land via bot PRs
   (run-unique branch names survive retries); never force-push.
 - **No-op rollback** (nothing to restore or delete) → reports and exits, no
@@ -72,24 +76,30 @@ logs "skipping" and stays green. Drift findings arrive as GitHub issues
 
 ## Procedures
 
-### Scratch org expired / recreating a stage org
-1. `sf org create scratch -f config/scratch-def-int.json -a <alias> -v PROD --duration-days 30`
-2. Baseline it: `sf project deploy start --source-dir force-app --ignore-conflicts -o <alias>`
-   (run from a checkout of that stage's branch).
-3. Refresh secrets: `sf org display -o <alias> --verbose --json` →
-   `result.sfdxAuthUrl` → BOTH the environment secret `SF_AUTH_URL` and the
-   repo secret `<ORG>_SF_AUTH_URL`.
+### Sandbox refreshed or recreated
+1. Confirm the packaged Salesforce DevOps CI application exists in the refreshed
+   sandbox and that the deployment user still has its packaged permission set.
+2. Keep the same deployment username naming convention. Update the
+   `connected-orgs.json` entry only if the username was deliberately changed.
+3. Retry JWT auth. The instance host is learned during authentication; update
+   the last-known host in the registry when the connection is refreshed.
 
-### Rotating the PROD JWT certificate
-1. Generate a new keypair (SETUP.md §4), update `<certificate>` in the
-   connected-app metadata, redeploy it to PROD.
-2. Update `SF_JWT_KEY` (environment) — consumer key is unchanged.
-3. Verify: re-run any gated deploy, or `sf org login jwt` locally.
+### Rotating the shared JWT certificate
+1. Create and protect the replacement keypair; update the managed CI/CD app's
+   certificate through the approved Salesforce packaging process.
+2. Update `ORBITOPS_JWT_KEY` in every authorised customer repository (or the
+   future central organisation/environment secret). The consumer key is
+   unchanged unless the application itself changes.
+3. Verify one non-production org with `sf org login jwt`, then run a governed
+   validation before using the new key for a production release.
 
-### Stuck deploy (queued forever)
-Another run of the same env holds the `deploy-<env>` concurrency lock, or the
-environment gate awaits review. Cancel stale waiting runs from the Actions tab
-(keep the newest per branch), approve or reject the gate.
+### Stuck job or deploy
+If the run says **Waiting for a runner**, compare its requested labels with the
+repo variable `ORBITOPS_TOOLBOX_RUNNER_LABELS`; the current PoC value is
+`["ubuntu-latest"]`. A non-existent self-hosted label will wait forever. Once a
+job starts, it may be waiting for a GitHub environment review or Salesforce may
+be queuing simultaneous deployments. Approve/reject the gate or inspect the
+Salesforce deployment status; do not add an OrbitOps org lock for the PoC.
 
 ### orbitops-meta corrupted/deleted
 It's derived state. Recreate empty: the next deploy re-creates the branch and
@@ -97,7 +107,8 @@ its manifest; deploy history before that point lives on in tags and the
 GitHub Deployments API (the UI reads manifests only, so old entries disappear
 from the UI unless you replay them from tag messages).
 
-### Revoking the UI's org access
-In any connected org: Setup → Connected Apps OAuth Usage → OrbitOps CI →
-Block/Revoke. Then delete the org's `DEV_*_SF_AUTH_URL` repo secret and its
-entry in `connected-orgs.json` (orbitops-meta branch).
+### Revoking an org
+Remove the deployment user's access to the packaged Salesforce DevOps CI app
+and delete the org entry from `connected-orgs.json` on `orbitops-meta`. The UI's
+short-lived OrbitOps Connect OAuth token was never retained, so there is no
+stored refresh token to revoke in GitHub.

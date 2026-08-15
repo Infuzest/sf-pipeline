@@ -1,5 +1,11 @@
 # Porting OrbitOps to an Enterprise GitHub (Bupa EMU)
 
+> **Historical/future migration reference.** This is not the current PoC
+> inventory. The active PoC already lives in the `Infuzest` organisation and
+> uses the `Xyraxel` human operator. Use [DEVOPS_CICD.md](DEVOPS_CICD.md) for
+> current repositories, identities, GCP resources and operating procedures.
+> References below to `SalikPOC` describe the original migration source only.
+
 This runbook moves both repos — `sf-pipeline` and `orbitops-ui` — from the
 public `SalikPOC` account to a **GitHub Enterprise Cloud** organization that
 uses **Enterprise Managed Users (EMU)** (target: enterprise `bupa-emu`, managed
@@ -128,7 +134,9 @@ Manual follow-ups the script lists:
 ## 4. Create the GitHub App (hand this permission list to InfoSec)
 
 Create a **new** GitHub App owned by the Bupa org (the personal App does not
-move). Per [docs/GITHUB_APP.md](GITHUB_APP.md), it needs these **repository**
+move). Per the UI's
+[GitHub App guide](https://github.com/Infuzest/orbitops-ui/blob/main/docs/GITHUB_APP.md),
+it needs these **repository**
 permissions:
 
 | Permission | Access | Why |

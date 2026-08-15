@@ -17,7 +17,8 @@ doors side by side at every phase**.
 
 GitHub is the source of truth (SFDX source format, `force-app/`). Each **stage**
 is a long-lived branch mapped to an org, and the stage order lives in
-[`.orbitops/pipeline.yml`](../.orbitops/pipeline.yml) — that file's order *is*
+[`Infuzest/salesforce-metadata/.orbitops/pipeline.yml`](https://github.com/Infuzest/salesforce-metadata/blob/main/.orbitops/pipeline.yml)
+— that file's order *is*
 promotion order (`integration` → `uat` → `main`/production today). **A promotion
 is a PR into the next stage branch. Its release candidate is deployed to that
 stage's org first, then the PR merges only after Salesforce succeeds**. This is
@@ -256,7 +257,8 @@ destructive changes → type the stage name to confirm → execute
 |---|---|---|
 | Coverage gate fails on a no-code change | Old pipeline (pre has-apex fix) ran | New runs auto-pass; trigger a fresh run (push or close/reopen) |
 | Re-run didn't pick up a pipeline fix | Re-runs use the original workflow snapshot | New event: push, or close/reopen the PR |
-| Deploy queued forever | Environment gate awaiting review, or another run holds the per-stage concurrency lock | Approve/reject the gate; cancel stale waiting runs |
+| Job waiting forever | Requested runner label does not exist or is offline | Restore `ORBITOPS_TOOLBOX_RUNNER_LABELS=["ubuntu-latest"]` or bring the matching shared pool online |
+| Deploy appears queued | Environment review or Salesforce's own deployment queue | Approve/reject the gate; inspect the target org's deployment status |
 | "Overlaps with another change" | Real merge conflict with another promotion | Developer resolves on the feature branch |
 | Promote button disabled | A check failing/running, or conflict | The reason is printed under the button; see Phase 5 |
 | No Salesforce deployment after the release completes | Empty deployable delta (docs/config only) | Expected — the change is recorded without touching Salesforce |

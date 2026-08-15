@@ -1,5 +1,9 @@
 # OrbitOps pipeline runtime
 
+> Read [docs/DEVOPS_CICD.md](docs/DEVOPS_CICD.md) before operating or changing
+> the PoC. It is the authoritative inventory of repositories, accounts, GCP
+> resources, credential boundaries and the end-to-end delivery process.
+
 Private, centrally maintained Salesforce delivery workflows for OrbitOps.
 Customer Salesforce repositories call these workflows through small stubs; they
 do not contain authentication actions, deployment scripts, scanner logic,
@@ -53,5 +57,7 @@ npm test
 npm run config:validate
 ```
 
-See [REQUIREMENTS.md](REQUIREMENTS.md), [docs/SETUP.md](docs/SETUP.md), and
-[docs/RUNBOOK.md](docs/RUNBOOK.md) for product and operating details.
+See [REQUIREMENTS.md](REQUIREMENTS.md),
+[docs/DEVOPS_CICD.md](docs/DEVOPS_CICD.md),
+[docs/SETUP.md](docs/SETUP.md), and [docs/RUNBOOK.md](docs/RUNBOOK.md) for
+product and operating details.

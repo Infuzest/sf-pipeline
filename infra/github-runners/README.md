@@ -1,14 +1,19 @@
 # OrbitOps GitHub runner pool
 
-The PoC runner pool uses GitHub Actions Runner Controller (ARC) on a private GKE
-cluster. One runner remains warm and the pool can grow to four runners. Runners
-are ephemeral: every job gets a clean runner pod and is removed afterwards.
+> **Optional future design, not the current PoC runtime.** The active customer
+> repository uses `ORBITOPS_TOOLBOX_RUNNER_LABELS=["ubuntu-latest"]`; no shared
+> ARC/self-hosted pool is currently available. See
+> [../../docs/DEVOPS_CICD.md](../../docs/DEVOPS_CICD.md) for the verified state.
+
+This directory preserves the proposed GitHub Actions Runner Controller (ARC)
+configuration for a private GKE cluster. If it is provisioned, one runner can
+remain warm and the pool can grow to four ephemeral runners.
 
 There is intentionally no OrbitOps concurrency lock for Salesforce targets.
 If several jobs deploy to the same org, Salesforce controls its own deployment
 queue.
 
-## Runtime configuration
+## Proposed runtime configuration
 
 | Setting | Value |
 | --- | --- |
@@ -21,13 +26,16 @@ queue.
 | System node pool | `default-pool`, fixed at one node |
 | Runner node pool | `orbitops-runner-pool-v2`, autoscaling from 1 to 4 `e2-standard-4` nodes with 30GB standard disks |
 
-The repository Actions variable `ORBITOPS_TOOLBOX_RUNNER_LABELS` must contain:
+Only after the scale set is online and shared with the customer repository,
+change `ORBITOPS_TOOLBOX_RUNNER_LABELS` to:
 
 ```json
 ["orbitops-toolbox-pool"]
 ```
 
-The Kubernetes secret `orbitops-github-app` is created out of band in the
+Until then, keep `["ubuntu-latest"]`; using the proposed label makes jobs wait
+indefinitely for a runner. The Kubernetes secret `orbitops-github-app` would be
+created out of band in the
 `arc-runners` namespace. It contains the existing OrbitOps GitHub App ID,
 installation ID, and private key. Never commit those values.
 

@@ -1,5 +1,16 @@
 # OrbitOps private pipeline runtime — AI assistant brief
 
+Before any operational, publishing, authentication, repository-boundary or
+Google Cloud work, read [docs/DEVOPS_CICD.md](docs/DEVOPS_CICD.md). It is the
+authoritative inventory of the active repositories and accounts.
+
+Current ownership: `Infuzest/sf-pipeline` is this private reusable runtime,
+`Infuzest/salesforce-metadata` is the PoC customer source repo, and
+`Infuzest/orbitops-ui` is the hosted control plane. The active human GitHub
+operator is `Xyraxel`; `SalikPOC` is legacy and must not be used for current
+publishing. Every GCP command must explicitly target project
+`sfdc-devops-dev` (and `europe-west2` for regional resources).
+
 This repository is the centrally maintained execution engine for customer
 Salesforce repositories. It contains no customer Salesforce metadata or stage
 topology.
