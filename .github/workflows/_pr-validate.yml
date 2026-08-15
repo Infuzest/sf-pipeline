@@ -174,9 +174,13 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           GATE_FAILED=0
+          # Only findings accepted on the target branch are grandfathered.
+          # A feature branch cannot silence its own new findings by editing the baseline.
+          git show "origin/${{ github.base_ref }}:.orbitops/scanner-baseline.json" \
+            > accepted-scan-baseline.json 2>/dev/null || printf '[]\n' > accepted-scan-baseline.json
           node $ORBITOPS_RUNTIME/scripts/scanner/gate.mjs results.sarif "${{ needs.context.outputs.scanner_max_severity }}" \
-            --baseline $ORBITOPS_RUNTIME/.orbitops/scanner-baseline.json --out scan-summary.md || GATE_FAILED=1
-          { echo "<!-- orbitops:scan -->"; cat scan-summary.md; } > scan-comment.md
+            --baseline accepted-scan-baseline.json \
+            --out scan-summary.md --comment-out scan-comment.md || GATE_FAILED=1
           cat scan-summary.md >> "$GITHUB_STEP_SUMMARY"
           echo "failed=$GATE_FAILED" >> "$GITHUB_OUTPUT"
       - name: Post scan comment
@@ -195,7 +199,8 @@ jobs:
         if: steps.gate.outputs.failed == '1'
         working-directory: ${{ github.workspace }}
         run: |
-          echo "New findings at or above the blocking severity — see the scan comment on the PR."
+          cat scan-summary.md
+          echo "Review the inline annotations or the OrbitOps code-scan comment on this pull request."
           exit 1
 
   validate:
