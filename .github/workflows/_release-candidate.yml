@@ -223,10 +223,10 @@ jobs:
           if [ "$SKIP_VALIDATION" = "true" ]; then MODE=skip; fi
           echo "test_level=$TEST_LEVEL" >> "$GITHUB_OUTPUT"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-      - name: Record final validation exception
+      - name: Record validation exception
         if: steps.delta.outputs.has_changes == 'true' && needs.prepare.outputs.skip_validation == 'true'
         run: |
-          echo "## Final Salesforce practice run skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Salesforce validation run skipped" >> "$GITHUB_STEP_SUMMARY"
           echo "A release manager requested this exception. The environment approval gate still applies before Salesforce is contacted." >> "$GITHUB_STEP_SUMMARY"
       - name: Validate the exact candidate against Salesforce
         id: validation

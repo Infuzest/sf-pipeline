@@ -66,7 +66,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const allowRequest = flag("allow-request", "true") === "true";
     const plan = resolveRequestTestPlan(bodyFile ? readFileSync(bodyFile, "utf8") : "", fallbackLevel, fallbackClasses, allowRequest);
     setOutputs({ test_level: plan.level, test_classes: JSON.stringify(plan.classes), test_plan_source: plan.source, skip_validation: String(plan.skipValidation) });
-    console.log(`Apex test plan: ${plan.level}${plan.classes.length ? ` (${plan.classes.join(", ")})` : ""} [${plan.source}]${plan.skipValidation ? " (final practice run skipped)" : ""}`);
+    console.log(`Apex test plan: ${plan.level}${plan.classes.length ? ` (${plan.classes.join(", ")})` : ""} [${plan.source}]${plan.skipValidation ? " (Salesforce validation skipped)" : ""}`);
   } catch (error) {
     console.error(`✖ ${error.message}`);
     process.exit(1);
