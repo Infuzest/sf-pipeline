@@ -16,7 +16,7 @@ const MARKER = /<!--\s*orbitops:test-plan\s+(\{[^\n]*\})\s*-->/;
 const LEVEL_LINE = /^OrbitOps-Test-Level:\s*(\S+)\s*$/mi;
 const CLASSES_LINE = /^OrbitOps-Test-Classes:\s*(.*?)\s*$/mi;
 
-function validatePlan(level, classes) {
+function validatePlan(level, classes, skipValidation = false) {
   if (!TEST_LEVELS.has(level)) throw new Error(`Unsupported test level: ${level}`);
   const unique = [...new Set(classes.map((name) => String(name).trim()).filter(Boolean))];
   if (unique.length > 50 || unique.some((name) => !APEX_TEST_RE.test(name))) {
@@ -28,7 +28,7 @@ function validatePlan(level, classes) {
   if (level !== "RunSpecifiedTests" && unique.length > 0) {
     throw new Error("Test classes can only be supplied with RunSpecifiedTests.");
   }
-  return { level, classes: unique };
+  return { level, classes: unique, skipValidation: skipValidation === true };
 }
 
 export function resolveRequestTestPlan(body, fallbackLevel = "Conditional", fallbackClasses = [], allowRequest = true) {
@@ -37,7 +37,10 @@ export function resolveRequestTestPlan(body, fallbackLevel = "Conditional", fall
   if (marker) {
     let parsed;
     try { parsed = JSON.parse(marker[1]); } catch { throw new Error("The OrbitOps test plan marker is not valid JSON."); }
-    return { ...validatePlan(parsed?.level, Array.isArray(parsed?.classes) ? parsed.classes : []), source: "request" };
+    return {
+      ...validatePlan(parsed?.level, Array.isArray(parsed?.classes) ? parsed.classes : [], parsed?.skipValidation === true),
+      source: "request",
+    };
   }
 
   const levelLine = String(body ?? "").match(LEVEL_LINE);
@@ -62,8 +65,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const fallbackClasses = JSON.parse(flag("fallback-classes", "[]"));
     const allowRequest = flag("allow-request", "true") === "true";
     const plan = resolveRequestTestPlan(bodyFile ? readFileSync(bodyFile, "utf8") : "", fallbackLevel, fallbackClasses, allowRequest);
-    setOutputs({ test_level: plan.level, test_classes: JSON.stringify(plan.classes), test_plan_source: plan.source });
-    console.log(`Apex test plan: ${plan.level}${plan.classes.length ? ` (${plan.classes.join(", ")})` : ""} [${plan.source}]`);
+    setOutputs({ test_level: plan.level, test_classes: JSON.stringify(plan.classes), test_plan_source: plan.source, skip_validation: String(plan.skipValidation) });
+    console.log(`Apex test plan: ${plan.level}${plan.classes.length ? ` (${plan.classes.join(", ")})` : ""} [${plan.source}]${plan.skipValidation ? " (final practice run skipped)" : ""}`);
   } catch (error) {
     console.error(`✖ ${error.message}`);
     process.exit(1);

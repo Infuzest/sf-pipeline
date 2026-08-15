@@ -20,6 +20,10 @@ on:
         required: false
         default: none
         type: string
+      skip_validation:
+        required: false
+        default: false
+        type: boolean
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -41,6 +45,7 @@ jobs:
       instance_url: ${{ steps.stage.outputs.instance_url }}
       test_level: ${{ steps.test-plan.outputs.test_level }}
       test_classes: ${{ steps.test-plan.outputs.test_classes }}
+      skip_validation: ${{ inputs.skip_validation || steps.test-plan.outputs.skip_validation == 'true' }}
       quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
       is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
     steps:
@@ -199,20 +204,39 @@ jobs:
           instance-url: ${{ needs.prepare.outputs.instance_url != '' && needs.prepare.outputs.instance_url || secrets.SF_INSTANCE_URL }}
           auth-url: ${{ secrets.SF_AUTH_URL }}
           alias: target-org
-      - name: Validate the exact candidate against Salesforce
-        id: validation
+      - name: Decide how Salesforce will run tests
+        id: deployment-plan
         if: steps.delta.outputs.has_changes == 'true'
         env:
           TEST_LEVEL_INPUT: ${{ needs.prepare.outputs.test_level }}
-          ORBITOPS_TEST_CLASSES: ${{ needs.prepare.outputs.test_classes }}
           QUICK_DEPLOY_ENABLED: ${{ needs.prepare.outputs.quick_deploy }}
           IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
+          SKIP_VALIDATION: ${{ needs.prepare.outputs.skip_validation }}
         run: |
           TEST_LEVEL="$TEST_LEVEL_INPUT"
           HAS_APEX=$(grep -l "ApexClass\\|ApexTrigger" deploy-package/package/package.xml 2>/dev/null || true)
           if [ "$TEST_LEVEL" = "Conditional" ]; then
             if [ -n "$HAS_APEX" ]; then TEST_LEVEL=RunLocalTests; else TEST_LEVEL=NoTestRun; fi
           fi
+          MODE=dry-run
+          if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$QUICK_DEPLOY_ENABLED" = "true" ] && [ "$TEST_LEVEL" != "NoTestRun" ]; then MODE=quick-deploy; fi
+          if [ "$SKIP_VALIDATION" = "true" ]; then MODE=skip; fi
+          echo "test_level=$TEST_LEVEL" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+      - name: Record final validation exception
+        if: steps.delta.outputs.has_changes == 'true' && needs.prepare.outputs.skip_validation == 'true'
+        run: |
+          echo "## Final Salesforce practice run skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo "A release manager requested this exception. The environment approval gate still applies before Salesforce is contacted." >> "$GITHUB_STEP_SUMMARY"
+      - name: Validate the exact candidate against Salesforce
+        id: validation
+        if: steps.delta.outputs.has_changes == 'true' && needs.prepare.outputs.skip_validation != 'true'
+        env:
+          TEST_LEVEL: ${{ steps.deployment-plan.outputs.test_level }}
+          ORBITOPS_TEST_CLASSES: ${{ needs.prepare.outputs.test_classes }}
+          QUICK_DEPLOY_ENABLED: ${{ needs.prepare.outputs.quick_deploy }}
+          IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
+        run: |
           TEST_ARGS=()
           if [ "$TEST_LEVEL" = "RunSpecifiedTests" ]; then
             while IFS= read -r test_class; do
@@ -223,24 +247,21 @@ jobs:
           if [ -s deploy-package/destructiveChanges/destructiveChanges.xml ] && grep -q "<members>" deploy-package/destructiveChanges/destructiveChanges.xml; then
             DESTRUCTIVE_ARGS=(--post-destructive-changes deploy-package/destructiveChanges/destructiveChanges.xml)
           fi
-          echo "test_level=$TEST_LEVEL" >> "$GITHUB_OUTPUT"
-          if [ "$IS_PRODUCTION_STAGE" = "true" ] && [ "$QUICK_DEPLOY_ENABLED" = "true" ] && [ "$TEST_LEVEL" != "NoTestRun" ]; then
+          if [ "${{ steps.deployment-plan.outputs.mode }}" = "quick-deploy" ]; then
             # A Production stage configured for Quick Deploy retains Salesforce's
             # standard validate → Quick Deploy path for the exact candidate.
-            echo "mode=quick-deploy" >> "$GITHUB_OUTPUT"
             sf project deploy validate --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" "${TEST_ARGS[@]}" --target-org target-org --wait 60 --json > validate-result.json || true
           else
             # Stages without Quick Deploy (including sandbox demo targets) use a
             # dry-run before the real atomic deployment. The branch remains
             # untouched if Salesforce rejects it.
-            echo "mode=dry-run" >> "$GITHUB_OUTPUT"
             sf project deploy start --dry-run --ignore-conflicts --manifest deploy-package/package/package.xml \
               "${DESTRUCTIVE_ARGS[@]}" --test-level "$TEST_LEVEL" "${TEST_ARGS[@]}" --target-org target-org --wait 60 --json > validate-result.json || true
           fi
       - name: Publish candidate validation result
         id: validate-result
-        if: steps.delta.outputs.has_changes == 'true'
+        if: steps.delta.outputs.has_changes == 'true' && needs.prepare.outputs.skip_validation != 'true'
         env:
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
@@ -279,9 +300,9 @@ jobs:
         if: steps.delta.outputs.has_changes == 'true'
         id: actual
         env:
-          TEST_LEVEL: ${{ steps.validation.outputs.test_level }}
+          TEST_LEVEL: ${{ steps.deployment-plan.outputs.test_level }}
           ORBITOPS_TEST_CLASSES: ${{ needs.prepare.outputs.test_classes }}
-          VALIDATION_MODE: ${{ steps.validation.outputs.mode }}
+          VALIDATION_MODE: ${{ steps.deployment-plan.outputs.mode }}
           VALIDATION_ID: ${{ steps.validate-result.outputs.validation_id }}
         run: |
           DESTRUCTIVE_ARGS=()
