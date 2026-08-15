@@ -30,6 +30,13 @@ test("the release container trusts its mounted workspace before rebuilding a can
   assert.ok(trust < rebuild, "workspace trust is configured before the first candidate Git operation");
 });
 
+test("skipping the final practice run never bypasses the deployment approval gate", () => {
+  const source = read(".github/workflows/_release-candidate.yml");
+  assert.match(source, /skip_validation:/, "release workflow accepts the controlled exception");
+  assert.match(source, /environment: \$\{\{ needs\.prepare\.outputs\.environment \}\}/, "the GitHub Environment gate remains on the deployment job");
+  assert.match(source, /needs\.prepare\.outputs\.skip_validation != 'true'/, "only the final practice run is skipped");
+});
+
 test("every Salesforce operation shares the connected-org JWT identity", () => {
   for (const workflow of [
     ".github/workflows/_pr-validate.yml",
