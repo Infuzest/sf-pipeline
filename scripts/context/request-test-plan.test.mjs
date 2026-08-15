@@ -36,7 +36,7 @@ test("a trusted OrbitOps stage promotion can choose its own test plan", () => {
   });
 });
 
-test("records a release-manager request to skip the final practice run", () => {
+test("records a release-manager request to skip Salesforce validation", () => {
   const body = '<!-- orbitops:test-plan {"level":"RunSpecifiedTests","classes":["ProductionSmokeTest"],"skipValidation":true} -->';
   assert.deepEqual(resolveRequestTestPlan(body), {
     level: "RunSpecifiedTests", classes: ["ProductionSmokeTest"], skipValidation: true, source: "request",

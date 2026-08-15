@@ -30,6 +30,7 @@ jobs:
       instance_url: ${{ steps.stage.outputs.instance_url }}
       test_level: ${{ steps.test-plan.outputs.test_level }}
       test_classes: ${{ steps.test-plan.outputs.test_classes }}
+      skip_validation: ${{ steps.test-plan.outputs.skip_validation }}
       min_coverage: ${{ steps.stage.outputs.min_coverage }}
       scanner_max_severity: ${{ steps.stage.outputs.scanner_max_severity }}
       work_items_required: ${{ steps.stage.outputs.work_items_required }}
@@ -200,7 +201,10 @@ jobs:
   validate:
     name: Validate against target org
     needs: [context, delta]
-    if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
+    # The remaining quality checks still run when a release manager skips
+    # Salesforce validation, but this job is recorded as skipped and never
+    # reads credentials or contacts the target org.
+    if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true' && needs.context.outputs.skip_validation != 'true'
     runs-on: ${{ fromJSON(vars.ORBITOPS_TOOLBOX_RUNNER_LABELS || '["ubuntu-latest"]') }}
     container:
       image: ghcr.io/infuzest/orbitops-sf-toolbox:2.142.7-sgd6.45.1-ca5.14.0-r2
@@ -317,7 +321,7 @@ jobs:
   coverage:
     name: Coverage gate
     needs: [context, delta, validate]
-    if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true'
+    if: needs.context.outputs.is_stage == 'true' && needs.delta.outputs.empty != 'true' && needs.context.outputs.skip_validation != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6 (Node 24)
