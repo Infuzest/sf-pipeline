@@ -131,3 +131,16 @@ test("customer repositories never need a copied pipeline implementation", () => 
     assert.match(source, /Infuzest\/sf-pipeline\/\.github\/actions\/runtime@main/, `${workflow} loads the private runtime`);
   }
 });
+
+test("code scan findings are useful in GitHub and portable to the OrbitOps UI", () => {
+  const workflow = read(".github/workflows/_pr-validate.yml");
+  const gate = read("scripts/scanner/gate.mjs");
+  assert.match(workflow, /git show "origin\/\$\{\{ github\.base_ref \}\}:\.orbitops\/scanner-baseline\.json"/,
+    "the accepted baseline comes from the target branch, not the proposed change");
+  assert.match(workflow, /--comment-out scan-comment\.md/,
+    "the PR comment carries the shared human and machine report");
+  assert.match(workflow, /cat scan-summary\.md/,
+    "the failed job prints the friendly report instead of only a generic error");
+  assert.match(gate, /::error /, "blocking findings become inline GitHub annotations");
+  assert.match(gate, /orbitops:scan-data:v1/, "the UI contract is explicitly versioned");
+});
