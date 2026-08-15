@@ -39,12 +39,15 @@ test("skipping Salesforce validation never bypasses the deployment approval gate
 
 test("a promotion validation exception never contacts Salesforce", () => {
   const source = read(".github/workflows/_pr-validate.yml");
+  const jobs = yaml.load(source).jobs;
   assert.match(source, /skip_validation: \$\{\{ steps\.test-plan\.outputs\.skip_validation \}\}/, "the context exposes the promotion exception");
-  assert.match(
-    source,
-    /needs\.context\.outputs\.skip_validation != 'true'/,
-    "Salesforce validation and coverage jobs are gated by the exception",
-  );
+  for (const name of ["delta", "work-items", "scan", "validate", "coverage"]) {
+    assert.match(
+      jobs[name].if,
+      /needs\.context\.outputs\.skip_validation != 'true'/,
+      `${name} is bypassed when a release manager requests direct deployment`,
+    );
+  }
 });
 
 test("every Salesforce operation shares the connected-org JWT identity", () => {
