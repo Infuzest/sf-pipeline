@@ -82,6 +82,14 @@ test("rollback blocks only unrecorded Salesforce package files", () => {
   assert.match(preview, /Salesforce changes must be reconciled before rollback/);
 });
 
+test("rollback resolves parent Flow deletions to destination-org versions", () => {
+  const preview = read("scripts/rollback/preview.sh");
+  assert.match(preview, /prepare-flow-deletions\.mjs/);
+  assert.match(preview, /--target-org target-org/);
+  assert.match(preview, /--preview preview\.md/);
+  assert.match(preview, /--safety safety\.json/);
+});
+
 test("trusted OrbitOps promotions can select tests at every governed stage", () => {
   const validation = read(".github/workflows/_pr-validate.yml");
   const release = read(".github/workflows/_release-candidate.yml");

@@ -262,3 +262,12 @@ Node ESM scripts with `node --test` units · composite action
   exposes this repository as `ORBITOPS_RUNTIME`; no customer scripts or
   `.pipeline` checkout are required. Private Actions sharing is enabled only
   by an explicit organization administration decision.
+- 2026-08-16: Flow rollback deletion is destination-state-aware. Salesforce
+  source format uses an unversioned Flow file, but Metadata API parent Flow
+  deletion can fail with W-10538057 (`insufficient access rights on
+  cross-reference id`). Before rollback validation, OrbitOps queries the
+  destination org's Tooling API `Flow` records and rewrites each unversioned
+  destructive member into its concrete `FlowName-version` members. The same
+  rewritten reverse delta is used by execution. Preview remains read-only;
+  active versions are called out for deactivation rather than silently
+  changing the org, and an already-absent Flow becomes a safe no-op.

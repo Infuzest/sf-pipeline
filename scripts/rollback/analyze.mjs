@@ -24,7 +24,8 @@ const RISK_RULES = {
   Flow: {
     redeploy:
       "⚠️ Deploying an older Flow version ADDS a new version and activates it; newer versions remain in the org (not removed).",
-    delete: "⚠️ Flow removal may fail if the flow is active or referenced; may orphan running interviews.",
+    delete:
+      "⚠️ OrbitOps will query the destination org and convert this parent Flow deletion into exact version deletions. Active versions must be deactivated first, and paused interviews or references can still prevent deletion.",
   },
   RecordType: { delete: "⚠️ Deleting a record type can strip it from records that use it." },
   ValidationRule: { redeploy: "Validation rule reverts to its target-version definition." },

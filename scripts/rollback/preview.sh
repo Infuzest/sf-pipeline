@@ -57,6 +57,21 @@ node "$RUNTIME_ROOT/scripts/rollback/analyze.mjs" reverse-delta \
   --env "$ROLLBACK_ENV" --from "$CURRENT_SEQ" --to "$TARGET_SEQ" \
   --include-destructive "$INCLUDE_DESTRUCTIVE" \
   --out-md preview.md --out-json safety.json
+
+# The Metadata API can reject deletion of a Flow definition by its parent name
+# with "insufficient access rights on cross-reference id" (W-10538057). Resolve
+# the target org's concrete Flow versions and make the destructive package
+# version-specific before both the dry-run and the real rollback use it.
+if [ "$INCLUDE_DESTRUCTIVE" = "true" ] && \
+   [ -f reverse-delta/destructiveChanges/destructiveChanges.xml ] && \
+   grep -q "<name>Flow</name>" reverse-delta/destructiveChanges/destructiveChanges.xml; then
+  node "$RUNTIME_ROOT/scripts/rollback/prepare-flow-deletions.mjs" \
+    reverse-delta/destructiveChanges/destructiveChanges.xml \
+    --target-org target-org \
+    --report flow-deletions.md \
+    --preview preview.md \
+    --safety safety.json
+fi
 cat preview.md >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
 # Validate against the org (dry-run has check-only semantics and accepts NoTestRun).
