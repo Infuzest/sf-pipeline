@@ -44,6 +44,11 @@ jobs:
           git fetch -q origin orbitops-meta 2>/dev/null || true
           git show origin/orbitops-meta:connected-orgs.json > connected-orgs.json 2>/dev/null || echo "[]" > connected-orgs.json
           node "$ORBITOPS_RUNTIME/scripts/context/resolve-stage.mjs" "${{ github.base_ref }}" --optional --registry connected-orgs.json
+      - id: test-class-manifests
+        if: steps.stage.outputs.is_stage == 'true'
+        run: |
+          node "$ORBITOPS_RUNTIME/scripts/context/test-class-manifests.mjs" \
+            --from "origin/${{ github.base_ref }}" --to HEAD
       - id: test-plan
         if: steps.stage.outputs.is_stage == 'true'
         env:
@@ -53,6 +58,8 @@ jobs:
           node "$ORBITOPS_RUNTIME/scripts/context/request-test-plan.mjs" --body pr-body.md \
             --fallback-level '${{ steps.stage.outputs.test_level }}' \
             --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
+            --repository-classes '${{ steps.test-class-manifests.outputs.test_classes }}' \
+            --repository-files '${{ steps.test-class-manifests.outputs.test_class_files }}' \
             --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' || (startsWith(github.head_ref, 'orbitops/bundle/') && github.event.pull_request.user.type == 'Bot') }}'
   delta:
     name: What will deploy

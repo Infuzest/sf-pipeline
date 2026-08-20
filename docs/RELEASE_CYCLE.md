@@ -168,8 +168,14 @@ workflow records the PR only after the actual Salesforce deployment succeeds:
 ```bash
 gh workflow run release-candidate.yml --ref main \
   -f pr_number=<number> \
-  -f target_branch=integration
+  -f target_branch=integration \
+  -f test_level=Conditional
 ```
+
+The test level is an execution input. For `RunSpecifiedTests`, the candidate's
+versioned `.orbitops/test-classes/*.json` files supply the class names; merged
+changes are unioned and deduplicated automatically. The UI uses this same
+contract rather than a separate deployment path.
 
 The release workflow serializes candidates for each destination stage, rebuilds
 the PR from that stage's latest revision, then validates and deploys the exact

@@ -12,8 +12,8 @@ export function parseConfiguredTestClasses(raw) {
   } catch {
     throw new Error("Configured test classes are not valid JSON.");
   }
-  if (!Array.isArray(values) || values.length === 0 || values.length > 50) {
-    throw new Error("RunSpecifiedTests needs between 1 and 50 configured test classes.");
+  if (!Array.isArray(values) || values.length === 0 || values.length > 500) {
+    throw new Error("RunSpecifiedTests needs between 1 and 500 resolved test classes.");
   }
   if (new Set(values).size !== values.length || values.some((value) => typeof value !== "string" || !APEX_TEST_RE.test(value))) {
     throw new Error("Configured test classes must be unique Apex class names (or Class.testMethod entries).");

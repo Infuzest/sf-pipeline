@@ -152,3 +152,11 @@ test("code scan findings are useful in GitHub and portable to the OrbitOps UI", 
   assert.match(gate, /::error /, "blocking findings become inline GitHub annotations");
   assert.match(gate, /orbitops:scan-data:v1/, "the UI contract is explicitly versioned");
 });
+
+test("release execution uses versioned test manifests and records the resolved plan", () => {
+  const workflow = read(".github/workflows/_release-candidate.yml");
+  assert.match(workflow, /test_level:\n\s+description:/, "the reusable release accepts a runtime test-level input");
+  assert.match(workflow, /test-class-manifests\.mjs/, "candidate test classes are read from versioned repository files");
+  assert.match(workflow, /runtime-input\+repository-manifests|test_plan_source/, "the test plan source is retained");
+  assert.match(workflow, /manifestFiles:/, "the deployment manifest records the contributing test files");
+});

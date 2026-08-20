@@ -41,7 +41,8 @@ release candidate — do not merge the PR yourself**:
 ```bash
 gh workflow run release-candidate.yml --ref main \
   -f pr_number=<number> \
-  -f target_branch=<stage-branch>
+  -f target_branch=<stage-branch> \
+  -f test_level=Conditional
 ```
 
 The release workflow queues candidates for that stage, rebuilds this PR from
@@ -53,6 +54,53 @@ Promoting onward works the same way: open a PR from the lower stage branch to
 the next one (`integration` → `uat`, `uat` → `main`). Releases to uat and
 production additionally wait at the GitHub Environment gate for a release
 manager's approval (Actions → the queued run → Review deployments).
+
+## Apex tests: execution input + versioned classes
+
+GitHub does not let a repository add a custom field beside Reviewers, Labels,
+Projects, and Milestones. OrbitOps therefore uses the native **Actions →
+Release candidate → Run workflow** form for the per-execution value. Choose
+one of `Conditional`, `RunLocalTests`, `RunSpecifiedTests`,
+`RunRelevantTests`, or `NoTestRun` in its **Apex tests for this execution**
+drop-down. The OrbitOps UI sends the same `test_level` input through the
+GitHub API.
+
+For `RunSpecifiedTests`, commit the required tests with the change instead of
+typing them into a transient workflow box:
+
+`.orbitops/test-classes/PROJ-123.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "changeId": "PROJ-123",
+  "classes": ["AccountServiceTest", "OpportunityTest.createsOpportunity"]
+}
+```
+
+Each file may contain up to 50 unique `Class` or `Class.testMethod` entries.
+When a release contains several changes, OrbitOps reads only the manifest
+files added or changed by that exact candidate, unions them, removes
+duplicates, and supplies the result to Salesforce. The resolved level, class
+list, source files, validation exception, actor, and run URL are then recorded
+in the stage's deployment JSON on `orbitops-meta` for audit.
+
+Example GitHub-only release:
+
+```bash
+git add .orbitops/test-classes/PROJ-123.json
+git commit -m "Record required Apex tests (PROJ-123)"
+git push
+
+gh workflow run release-candidate.yml --ref main \
+  -f pr_number=<number> \
+  -f target_branch=integration \
+  -f test_level=RunSpecifiedTests
+```
+
+If `RunSpecifiedTests` is selected and the candidate has no valid manifest,
+the release fails before Salesforce is contacted with a precise configuration
+error. This avoids silently running the wrong tests.
 
 ## Work-item tagging (enforced by the "Work items" check)
 

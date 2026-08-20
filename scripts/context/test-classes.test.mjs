@@ -10,7 +10,7 @@ test("accepts configured Apex classes and individual test methods", () => {
 });
 
 test("rejects unsafe, duplicate, or empty specified-test lists", () => {
-  assert.throws(() => parseConfiguredTestClasses("[]"), /between 1 and 50/);
+  assert.throws(() => parseConfiguredTestClasses("[]"), /between 1 and 500/);
   assert.throws(() => parseConfiguredTestClasses('["OneTest", "OneTest"]'), /unique/);
   assert.throws(() => parseConfiguredTestClasses('["Test; rm -rf /"]'), /class names/);
 });
