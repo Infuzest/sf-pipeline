@@ -49,3 +49,27 @@ test("rejects an unsafe specified test plan", () => {
     /unique Apex class/
   );
 });
+
+test("runtime test level uses the versioned repository manifests", () => {
+  assert.deepEqual(
+    resolveRequestTestPlan("", "RunLocalTests", [], false, {
+      requestedLevel: "RunSpecifiedTests",
+      repositoryClasses: ["AccountTest", "ContactTest.testInsert"],
+      repositoryFiles: [".orbitops/test-classes/PROJ-1.json"],
+    }),
+    {
+      level: "RunSpecifiedTests",
+      classes: ["AccountTest", "ContactTest.testInsert"],
+      skipValidation: false,
+      source: "runtime-input+repository-manifests",
+      manifestFiles: [".orbitops/test-classes/PROJ-1.json"],
+    },
+  );
+});
+
+test("RunSpecifiedTests runtime input fails when the candidate has no test manifest", () => {
+  assert.throws(
+    () => resolveRequestTestPlan("", "RunLocalTests", [], true, { requestedLevel: "RunSpecifiedTests" }),
+    /needs at least one test class/,
+  );
+});

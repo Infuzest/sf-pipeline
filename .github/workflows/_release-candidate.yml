@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      test_level:
+        description: "Apex test level for this execution; RunSpecifiedTests reads versioned test-class manifests from the candidate"
+        required: false
+        default: ""
+        type: string
 
 env:
   GH_TOKEN: ${{ github.token }}
@@ -45,6 +50,8 @@ jobs:
       instance_url: ${{ steps.stage.outputs.instance_url }}
       test_level: ${{ steps.test-plan.outputs.test_level }}
       test_classes: ${{ steps.test-plan.outputs.test_classes }}
+      test_plan_source: ${{ steps.test-plan.outputs.test_plan_source }}
+      test_class_files: ${{ steps.test-plan.outputs.test_class_files }}
       skip_validation: ${{ inputs.skip_validation || steps.test-plan.outputs.skip_validation == 'true' }}
       quick_deploy: ${{ steps.stage.outputs.quick_deploy }}
       is_last_stage: ${{ steps.stage.outputs.is_last_stage }}
@@ -77,6 +84,12 @@ jobs:
             console.log(`head_ref=${pr.head.ref}`);
             console.log(`author_type=${pr.user?.type ?? ""}`);
           ' >> "$GITHUB_OUTPUT"
+      - name: Resolve versioned Apex test classes
+        id: test-class-manifests
+        run: |
+          git fetch --no-tags origin '${{ steps.pr.outputs.base_sha }}' '${{ steps.pr.outputs.head_sha }}'
+          node "$ORBITOPS_RUNTIME/scripts/context/test-class-manifests.mjs" \
+            --from '${{ steps.pr.outputs.base_sha }}' --to '${{ steps.pr.outputs.head_sha }}'
       - name: Resolve this promotion's Apex test plan
         id: test-plan
         run: |
@@ -84,6 +97,9 @@ jobs:
           node "$ORBITOPS_RUNTIME/scripts/context/request-test-plan.mjs" --body pr-body.md \
             --fallback-level '${{ steps.stage.outputs.test_level }}' \
             --fallback-classes '${{ steps.stage.outputs.test_classes }}' \
+            --requested-level '${{ inputs.test_level }}' \
+            --repository-classes '${{ steps.test-class-manifests.outputs.test_classes }}' \
+            --repository-files '${{ steps.test-class-manifests.outputs.test_class_files }}' \
             --allow-request '${{ steps.stage.outputs.policy_owner == 'developer' || (startsWith(steps.pr.outputs.head_ref, 'orbitops/bundle/') && steps.pr.outputs.author_type == 'Bot') }}'
       - name: Build the candidate locally and detect conflicts
         id: candidate
@@ -385,6 +401,11 @@ jobs:
           MERGED_SHA: ${{ steps.merge.outputs.sha }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           IS_PRODUCTION_STAGE: ${{ needs.prepare.outputs.is_last_stage }}
+          RESOLVED_TEST_LEVEL: ${{ needs.prepare.outputs.test_level }}
+          RESOLVED_TEST_CLASSES: ${{ needs.prepare.outputs.test_classes }}
+          TEST_PLAN_SOURCE: ${{ needs.prepare.outputs.test_plan_source }}
+          TEST_CLASS_FILES: ${{ needs.prepare.outputs.test_class_files }}
+          VALIDATION_SKIPPED: ${{ needs.prepare.outputs.skip_validation }}
         run: |
           git config user.name "orbitops-bot"
           git config user.email "orbitops-bot@users.noreply.github.com"
@@ -406,7 +427,18 @@ jobs:
             fs.writeFileSync("commit-messages.json", JSON.stringify(messages));
           '
           EXTRA=$(node -e '
-            const extra = { reason: "candidate deployment", mode: "delta", releaseType: process.env.RELEASE_TYPE };
+            const extra = {
+              reason: "candidate deployment",
+              mode: "delta",
+              releaseType: process.env.RELEASE_TYPE,
+              testPlan: {
+                level: process.env.RESOLVED_TEST_LEVEL,
+                classes: JSON.parse(process.env.RESOLVED_TEST_CLASSES || "[]"),
+                source: process.env.TEST_PLAN_SOURCE,
+                manifestFiles: JSON.parse(process.env.TEST_CLASS_FILES || "[]"),
+                validationSkipped: process.env.VALIDATION_SKIPPED === "true",
+              },
+            };
             if (process.env.VERSION_TAG) extra.versionTag = process.env.VERSION_TAG;
             console.log(JSON.stringify(extra));
           ')

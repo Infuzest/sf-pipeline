@@ -271,3 +271,12 @@ Node ESM scripts with `node --test` units · composite action
   rewritten reverse delta is used by execution. Preview remains read-only;
   active versions are called out for deactivation rather than silently
   changing the org, and an already-absent Flow becomes a safe no-op.
+- 2026-08-20: Apex test selection is a versioned per-execution contract.
+  GitHub-native developers select the test level through the release workflow
+  input and store RunSpecifiedTests classes under
+  `.orbitops/test-classes/<change-id>.json`; OrbitOps UI writes the same
+  contract. Candidate preparation resolves only manifests changed between the
+  exact target and candidate revisions, unions and deduplicates them for
+  multi-change releases, and records the resolved level, classes, source files,
+  and validation choice in the deployment manifest for audit. Old manifests
+  already present on the target branch never leak into later releases.
